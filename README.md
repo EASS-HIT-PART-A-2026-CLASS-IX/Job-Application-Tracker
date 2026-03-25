@@ -76,20 +76,20 @@ uv run uvicorn app.main:app --reload
 
 The API will be available at:
 
-API: http://127.0.0.1:8000
-
-Docs (Swagger): http://127.0.0.1:8000/docs
+- API: http://127.0.0.1:8000  
+- Docs (Swagger): http://127.0.0.1:8000/docs  
 
 ## Running Tests
+
+Run all tests:
 
 ```bash
 uv run pytest
 ```
 
 Expected output:
-```bash
 6 passed
-```
+
 
 ## Example Request
 

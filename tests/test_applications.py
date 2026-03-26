@@ -131,3 +131,20 @@ def test_get_missing_application_returns_404() -> None:
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Application not found"
+
+# Verify invalid status returns 422 validation error
+def test_create_application_with_invalid_status_returns_422() -> None:
+    payload = {
+        "company": "Google",
+        "position": "Backend Developer",
+        "status": "invalid_status",  # invalid value
+        "location": "Tel Aviv",
+        "applied_date": "2026-03-25",
+        "source": "LinkedIn",
+        "notes": "Sent CV",
+        "favorite": False
+    }
+
+    response = client.post("/applications", json=payload)
+
+    assert response.status_code == 422

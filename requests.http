@@ -1,0 +1,29 @@
+### Get all applications
+GET http://127.0.0.1:8000/applications
+
+###
+
+### Create new application
+POST http://127.0.0.1:8000/applications
+Content-Type: application/json
+
+{
+  "company": "Google",
+  "position": "Backend Developer",
+  "status": "applied",
+  "location": "Tel Aviv",
+  "applied_date": "2026-03-25",
+  "source": "LinkedIn",
+  "notes": "Sent CV",
+  "favorite": false
+}
+
+###
+
+### Get application by ID
+GET http://127.0.0.1:8000/applications/1
+
+###
+
+### Delete application
+DELETE http://127.0.0.1:8000/applications/1

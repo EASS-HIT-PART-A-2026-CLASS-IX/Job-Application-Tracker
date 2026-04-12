@@ -10,7 +10,7 @@ def seed_data():
     create_db_and_tables()
 
     with Session(engine) as session:
-        # ✅ Check if data already exists
+        # Check if data already exists
         existing = session.exec(select(JobApplication)).first()
 
         if existing:

@@ -27,6 +27,27 @@ This project was developed as part of EX1 and demonstrates a clean and minimal R
 
 ---
 
+## API Endpoints
+
+### Applications
+
+| Method | Path                    | Description                     |
+|--------|-------------------------|---------------------------------|
+| GET    | /applications           | Get all applications           |
+| GET    | /applications/{id}      | Get application by ID          |
+| POST   | /applications           | Create a new application       |
+| PUT    | /applications/{id}      | Update an application          |
+| DELETE | /applications/{id}      | Delete an application          |
+
+---
+
+### Health Check
+
+| Method | Path     | Description                  |
+|--------|----------|------------------------------|
+| GET    | /health  | Check if API is running      |
+
+
 ## Project Structure
 
 ```

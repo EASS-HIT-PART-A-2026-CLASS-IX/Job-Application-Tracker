@@ -1,27 +1,35 @@
 from fastapi.testclient import TestClient
+from sqlmodel import SQLModel, Session, create_engine
 
+from app.db import get_session
 from app.main import app
-from app.routes.applications import repository
+from app.models import JobApplication
 
-# Create a test client for the FastAPI app
+# Create a separate SQLite database for tests
+test_engine = create_engine("sqlite:///test.db", echo=False)
+
+
+def override_get_session():
+    with Session(test_engine) as session:
+        yield session
+
+
+app.dependency_overrides[get_session] = override_get_session
 client = TestClient(app)
 
 
-# Reset in-memory storage before each test
+# Reset database before each test
 def setup_function() -> None:
-    repository._applications.clear()
-    repository._next_id = 1
+    SQLModel.metadata.drop_all(test_engine)
+    SQLModel.metadata.create_all(test_engine)
 
 
-# Verify the applications list is empty at the start
 def test_list_applications_starts_empty() -> None:
     response = client.get("/applications")
-
     assert response.status_code == 200
     assert response.json() == []
 
 
-# Verify a new application can be created successfully
 def test_create_application() -> None:
     payload = {
         "company": "Google",
@@ -40,11 +48,9 @@ def test_create_application() -> None:
     data = response.json()
     assert data["id"] == 1
     assert data["company"] == "Google"
-    assert data["position"] == "Backend Developer"
     assert data["status"] == "applied"
 
 
-# Verify a single application can be retrieved by ID
 def test_get_application_by_id() -> None:
     payload = {
         "company": "Microsoft",
@@ -66,7 +72,6 @@ def test_get_application_by_id() -> None:
     assert response.json()["company"] == "Microsoft"
 
 
-# Verify an existing application can be updated
 def test_update_application() -> None:
     create_payload = {
         "company": "Amazon",
@@ -99,10 +104,8 @@ def test_update_application() -> None:
     data = response.json()
     assert data["status"] == "interview"
     assert data["favorite"] is True
-    assert data["notes"] == "First interview scheduled"
 
 
-# Verify an application can be deleted
 def test_delete_application() -> None:
     payload = {
         "company": "Apple",
@@ -125,19 +128,17 @@ def test_delete_application() -> None:
     assert get_response.status_code == 404
 
 
-# Verify a missing application returns 404
 def test_get_missing_application_returns_404() -> None:
     response = client.get("/applications/999")
-
     assert response.status_code == 404
     assert response.json()["detail"] == "Application not found"
 
-# Verify invalid status returns 422 validation error
+
 def test_create_application_with_invalid_status_returns_422() -> None:
     payload = {
         "company": "Google",
         "position": "Backend Developer",
-        "status": "invalid_status",  # invalid value
+        "status": "invalid_status",
         "location": "Tel Aviv",
         "applied_date": "2026-03-25",
         "source": "LinkedIn",

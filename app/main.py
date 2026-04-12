@@ -1,15 +1,22 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.db import create_db_and_tables
 from app.routes.applications import router as applications_router
 
-app = FastAPI(title="Job Application Tracker API")
 
-
-# Create database tables when the application starts
-@app.on_event("startup")
-def on_startup() -> None:
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Create database tables when the application starts
     create_db_and_tables()
+    yield
+
+
+app = FastAPI(
+    title="Job Application Tracker API",
+    lifespan=lifespan,
+)
 
 
 # Root endpoint to verify the API is running

@@ -123,6 +123,14 @@ Expected output:
 
 ---
 
+## Seed Script
+
+To populate the database with sample data:
+
+```bash
+uv run python scripts/seed.py
+```
+
 ## Example Request
 
 ```json

@@ -2,59 +2,61 @@
 
 A simple FastAPI backend service for managing job applications.
 
-This project was developed as part of EX1 and demonstrates a clean and minimal REST API using FastAPI, Pydantic, and pytest.
+This project was developed as part of EX1 and demonstrates a clean and minimal REST API using FastAPI, Pydantic, SQLModel, and pytest.
 
 ---
 
 ## Features
 
-- Create a job application
-- List all job applications
-- Get a job application by ID
-- Update a job application
-- Delete a job application
+* Create a job application
+* List all job applications
+* Get a job application by ID
+* Update a job application
+* Delete a job application
 
 ---
 
 ## Tech Stack
 
-- Python 3.11+
-- FastAPI
-- Pydantic
-- Uvicorn
-- pytest
+* Python 3.11+
+* FastAPI
+* Pydantic
+* SQLModel (SQLite)
+* Uvicorn
+* pytest
 
 ---
 
-##  Project Structure
+## Project Structure
 
 ```
 job-application-tracker/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py                  # FastAPI app entry point
-│   ├── schemas.py              # Pydantic models
-│   ├── repository.py           # In-memory data layer
+│   ├── db.py                    # Database configuration (SQLite)
+│   ├── models.py                # SQLModel database models
+│   ├── schemas.py               # Pydantic schemas
 │   └── routes/
 │       ├── __init__.py
-│       └── applications.py     # API routes
+│       └── applications.py      # API routes
 ├── tests/
-│   └── test_applications.py    # API tests
+│   └── test_applications.py     # API tests
 ├── pyproject.toml
 ├── README.md
 └── .gitignore
 ```
 
-
 ---
 
-##  Setup
+## Setup
 
 ### 1. Create virtual environment
 
 ```bash
 uv venv
 ```
+
 ### 2. Activate environment
 
 ```bash
@@ -62,9 +64,12 @@ source .venv/bin/activate
 ```
 
 ### 3. Install dependencies
+
 ```bash
 uv sync --dev
 ```
+
+---
 
 ## Running the API
 
@@ -76,8 +81,10 @@ uv run uvicorn app.main:app --reload
 
 The API will be available at:
 
-- API: http://127.0.0.1:8000  
-- Docs (Swagger): http://127.0.0.1:8000/docs  
+* API: http://127.0.0.1:8000
+* Docs (Swagger): http://127.0.0.1:8000/docs
+
+---
 
 ## Running Tests
 
@@ -88,8 +95,12 @@ uv run pytest
 ```
 
 Expected output:
-6 passed
 
+```
+7 passed
+```
+
+---
 
 ## Example Request
 
@@ -106,21 +117,27 @@ Expected output:
 }
 ```
 
+---
+
 ## Design
 
-The project is structured using a simple layered architecture:
+The project follows a simple layered architecture:
 
-- Routes layer – handles HTTP requests
-- Schemas layer – validates input/output data using Pydantic
-- Repository layer – manages in-memory data storage
+* Routes layer – handles HTTP requests
+* Schemas layer – validates input/output data using Pydantic
+* Models layer – defines database structure using SQLModel
+* Database layer – manages persistence using SQLite
 
-This structure allows easy extension in future exercises.
+The project initially used an in-memory repository and was later upgraded to SQLite for persistence, while keeping the same architecture.
+
+---
 
 ## AI Assistance
 
 AI tools were used to:
-- Plan the project structure
-- Generate initial code templates
-- Improve code clarity
+
+* Plan the project structure
+* Generate initial code templates
+* Improve code clarity
 
 All outputs were reviewed and tested locally.

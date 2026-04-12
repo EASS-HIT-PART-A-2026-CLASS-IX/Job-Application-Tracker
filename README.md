@@ -163,10 +163,18 @@ The project initially used an in-memory repository and was later upgraded to SQL
 
 ## AI Assistance
 
-AI tools were used to:
+This project was developed with the support of AI tools (e.g., ChatGPT) during the development process.
 
-* Plan the project structure
-* Generate initial code templates
-* Improve code clarity
+### How AI was used:
 
-All outputs were reviewed and tested locally.
+- Exploring different approaches for structuring the project (routes, repository, schemas)
+- Understanding FastAPI and SQLModel integration patterns
+- Getting explanations for errors and debugging issues during development
+- Refining API design and improving code readability
+
+### How outputs were verified:
+
+- All generated code was manually reviewed and fully understood before being used
+- The application was tested locally using pytest to ensure all tests pass
+- Endpoints were verified manually using the Swagger UI (/docs)
+- Additional validation was done by running the seed script and checking database behavior

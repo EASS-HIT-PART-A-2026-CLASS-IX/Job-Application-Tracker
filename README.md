@@ -63,6 +63,7 @@ job-application-tracker/
 │       └── applications.py      # API routes
 ├── tests/
 │   └── test_applications.py     # API tests
+├── requests.http                # Manual API request examples
 ├── pyproject.toml
 ├── README.md
 └── .gitignore

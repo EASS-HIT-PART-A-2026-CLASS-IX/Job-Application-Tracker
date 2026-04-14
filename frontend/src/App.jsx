@@ -8,11 +8,13 @@ import {
   FileText,
   Heart,
   MapPin,
+  Moon,
   PencilLine,
   Plus,
   RefreshCw,
   Search,
   Star,
+  SunMedium,
   Trash2,
 } from "lucide-react";
 import "./App.css";
@@ -274,6 +276,7 @@ export default function App() {
   const [togglingFavoriteId, setTogglingFavoriteId] = useState(null);
   const [shouldScrollToForm, setShouldScrollToForm] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem("jobflow-theme") ?? "light");
 
   const updateCreateForm = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -313,6 +316,10 @@ export default function App() {
   useEffect(() => {
     fetchApplications();
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("jobflow-theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!shouldScrollToForm || activeSection !== "applications") {
@@ -546,6 +553,10 @@ export default function App() {
     setActiveSection("applications");
     setFavoriteFilter("all");
     setShouldScrollToForm(true);
+  };
+
+  const toggleTheme = () => {
+    setTheme((current) => (current === "dark" ? "light" : "dark"));
   };
 
   const toggleStatusFilter = (status) => {
@@ -782,7 +793,7 @@ export default function App() {
   };
 
   return (
-    <div className="page-canvas">
+    <div className={`page-canvas ${theme === "dark" ? "theme-dark" : ""}`}>
     <div className="app-shell">
       <aside className="sidebar">
         <button className="brand brand-button" type="button" onClick={() => setAboutOpen(true)}>
@@ -862,6 +873,15 @@ export default function App() {
                 Add Application
               </button>
             ) : null}
+            <button
+              className="sidebar-theme-toggle"
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              title={theme === "dark" ? "Light mode" : "Dark mode"}
+            >
+              {theme === "dark" ? <SunMedium size={18} /> : <Moon size={18} />}
+            </button>
           </div>
         </section>
 

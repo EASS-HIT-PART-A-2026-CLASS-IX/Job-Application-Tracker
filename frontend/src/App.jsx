@@ -58,7 +58,12 @@ function StatusBadge({ status }) {
   );
 }
 
-function StatusChart({ items }) {
+function StatusChart({
+  items,
+  title = "Application chart",
+  subtitle = "Status distribution across your pipeline",
+  totalLabel = "Total",
+}) {
   const total = items.reduce((sum, item) => sum + item.value, 0);
   let currentStop = 0;
 
@@ -80,8 +85,8 @@ function StatusChart({ items }) {
     <div className="chart-panel">
       <div className="section-head">
         <div>
-          <h2>Application chart</h2>
-          <p>Status distribution across your pipeline</p>
+          <h2>{title}</h2>
+          <p>{subtitle}</p>
         </div>
       </div>
 
@@ -90,7 +95,7 @@ function StatusChart({ items }) {
           <div className="chart-ring" style={{ background: chartBackground }}>
             <div className="chart-ring-center">
               <strong>{total}</strong>
-              <span>Total</span>
+              <span>{totalLabel}</span>
             </div>
           </div>
         </div>
@@ -109,6 +114,54 @@ function StatusChart({ items }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function ApplicationsByMonthPanel({ items, total }) {
+  const maxValue = Math.max(...items.map((item) => item.value), 1);
+
+  return (
+    <section className="applications-panel dashboard-trend">
+      <div className="section-head">
+        <div>
+          <h2>Applications by month</h2>
+          <p>Recent trend based on applied dates</p>
+        </div>
+      </div>
+
+      {total === 0 ? (
+        <div className="empty-state">
+          <strong>No dated applications yet.</strong>
+          <span>Add applied dates to build your monthly trend.</span>
+        </div>
+      ) : (
+        <div className="trend-chart-shell">
+          <div className="trend-chart-scale">
+            {[maxValue, Math.max(Math.ceil(maxValue / 2), 1), 0].map((value) => (
+              <span key={value}>{value}</span>
+            ))}
+          </div>
+          <div className="trend-chart">
+            {items.map((item) => (
+              <div className="trend-bar-group" key={item.key}>
+                <span className="trend-bar-value">{item.value}</span>
+                <div className="trend-bar-track">
+                  <div
+                    className="trend-bar-fill"
+                    style={{ height: `${Math.max((item.value / maxValue) * 100, item.value > 0 ? 12 : 0)}%` }}
+                  />
+                </div>
+                <span className="trend-bar-label">{item.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="trend-summary">
+            <strong>{total} total</strong>
+            <span>applications across the last 6 months</span>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -271,7 +324,12 @@ export default function App() {
   const [selectedStatuses, setSelectedStatuses] = useState([]);
   const [favoriteFilter, setFavoriteFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
-  const [activeSection, setActiveSection] = useState("applications");
+  const [activeSection, setActiveSection] = useState(() => {
+    const savedSection = localStorage.getItem("jobflow-active-section");
+    return savedSection === "applications" || savedSection === "favorites" || savedSection === "dashboard"
+      ? savedSection
+      : "dashboard";
+  });
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [togglingFavoriteId, setTogglingFavoriteId] = useState(null);
   const [shouldScrollToForm, setShouldScrollToForm] = useState(false);
@@ -320,6 +378,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("jobflow-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("jobflow-active-section", activeSection);
+  }, [activeSection]);
 
   useEffect(() => {
     if (!shouldScrollToForm || activeSection !== "applications") {
@@ -440,6 +502,34 @@ export default function App() {
     };
   }, [applications]);
 
+  const favoriteRecentActivity = useMemo(() => {
+    const favoriteItems = applications
+      .filter((item) => item.favorite)
+      .sort((a, b) => {
+        const left = a.applied_date ? new Date(a.applied_date).getTime() : 0;
+        const right = b.applied_date ? new Date(b.applied_date).getTime() : 0;
+        return right - left;
+      })
+      .slice(0, 4);
+
+    return favoriteItems.map((item) => ({
+      id: item.id,
+      title: `${item.position} at ${item.company}`,
+      activity:
+        item.status === "offer"
+          ? "Offer in progress"
+          : item.status === "interview"
+            ? "Interview stage reached"
+            : item.status === "applied"
+              ? "Application sent"
+              : item.status === "rejected"
+                ? "Application closed"
+                : "Saved for later",
+      date: formatDate(item.applied_date),
+      status: item.status,
+    }));
+  }, [applications]);
+
   const chartData = useMemo(
     () =>
       ["saved", "applied", "interview", "offer", "rejected"].map((status) => ({
@@ -449,6 +539,57 @@ export default function App() {
         color: statusColors[status],
       })),
     [applications],
+  );
+
+  const favoriteChartData = useMemo(
+    () =>
+      ["saved", "applied", "interview", "offer", "rejected"].map((status) => ({
+        key: status,
+        label: statusLabels[status],
+        value: applications.filter((item) => item.favorite && item.status === status).length,
+        color: statusColors[status],
+      })),
+    [applications],
+  );
+
+  const monthlyApplications = useMemo(() => {
+    const formatter = new Intl.DateTimeFormat("en-US", { month: "short" });
+    const now = new Date();
+    const months = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      return {
+        key,
+        label: formatter.format(date),
+        value: 0,
+      };
+    });
+
+    const monthLookup = new Map(months.map((item) => [item.key, item]));
+
+    applications.forEach((item) => {
+      if (!item.applied_date) {
+        return;
+      }
+
+      const date = new Date(item.applied_date);
+      if (Number.isNaN(date.getTime())) {
+        return;
+      }
+
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      const target = monthLookup.get(key);
+      if (target) {
+        target.value += 1;
+      }
+    });
+
+    return months;
+  }, [applications]);
+
+  const monthlyApplicationsTotal = useMemo(
+    () => monthlyApplications.reduce((sum, item) => sum + item.value, 0),
+    [monthlyApplications],
   );
 
   const statsCards =
@@ -899,40 +1040,232 @@ export default function App() {
         </section>
 
         {activeSection === "dashboard" ? (
-          <div className="dashboard-grid">
-            <section className="applications-panel dashboard-activity">
+          <>
+            <div className="dashboard-grid">
+              <section className="applications-panel dashboard-activity">
+                <div className="section-head">
+                  <div>
+                    <h2>Recent activity</h2>
+                    <p>Latest changes in your pipeline</p>
+                  </div>
+                </div>
+
+                <div className="dashboard-list">
+                  {recentActivity.length === 0 ? (
+                    <div className="empty-state">
+                      <strong>No applications yet.</strong>
+                      <span>Add your first application from the form.</span>
+                    </div>
+                  ) : (
+                    recentActivity.map((item) => (
+                      <article className="dashboard-row" key={item.id}>
+                        <div>
+                          <strong>{item.title}</strong>
+                          <p>{item.activity}</p>
+                        </div>
+                        <div className="dashboard-row-meta">
+                          <StatusBadge status={item.status} />
+                          <span>{item.date}</span>
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </section>
+
+              <StatusChart items={chartData} />
+            </div>
+
+            <div className="dashboard-grid dashboard-grid-secondary">
+              <ApplicationsByMonthPanel items={monthlyApplications} total={monthlyApplicationsTotal} />
+            </div>
+          </>
+        ) : activeSection === "favorites" ? (
+          <>
+            <div className="dashboard-grid">
+              <section className="applications-panel dashboard-activity">
+                <div className="section-head">
+                  <div>
+                    <h2>Favorite activity</h2>
+                    <p>Latest changes across your favorite roles</p>
+                  </div>
+                </div>
+
+                <div className="dashboard-list">
+                  {favoriteRecentActivity.length === 0 ? (
+                    <div className="empty-state">
+                      <strong>No favorite applications yet.</strong>
+                      <span>Mark roles as favorite to track them here.</span>
+                    </div>
+                  ) : (
+                    favoriteRecentActivity.map((item) => (
+                      <article className="dashboard-row" key={item.id}>
+                        <div>
+                          <strong>{item.title}</strong>
+                          <p>{item.activity}</p>
+                        </div>
+                        <div className="dashboard-row-meta">
+                          <StatusBadge status={item.status} />
+                          <span>{item.date}</span>
+                        </div>
+                      </article>
+                    ))
+                  )}
+                </div>
+              </section>
+
+              <StatusChart
+                items={favoriteChartData}
+                title="Favorites chart"
+                subtitle="Status distribution across your favorite applications"
+                totalLabel="Favorites"
+              />
+            </div>
+            <div className="content-grid content-grid-single">
+              <section className="applications-panel">
               <div className="section-head">
                 <div>
-                  <h2>Recent activity</h2>
-                  <p>Latest changes in your pipeline</p>
+                  <h2>Application board</h2>
+                  <p>
+                    {filteredApplications.length} shown
+                    {activeSection === "favorites" ? " in favorites" : ""}
+                  </p>
                 </div>
               </div>
 
-              <div className="dashboard-list">
-                {recentActivity.length === 0 ? (
+              <div className="filters">
+                <label className="search-filter">
+                  <Search size={16} />
+                  <input
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="Search company, role, source, notes..."
+                  />
+                </label>
+
+                <select value={favoriteFilter} onChange={(event) => setFavoriteFilter(event.target.value)}>
+                  <option value="all">All priorities</option>
+                  <option value="favorite">Favorites</option>
+                  <option value="regular">Regular</option>
+                </select>
+
+                <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="company_asc">Company A-Z</option>
+                  <option value="company_desc">Company Z-A</option>
+                  <option value="status">Status</option>
+                </select>
+              </div>
+
+              <div className="quick-filters">
+                <div className="status-chips">
+                  <button
+                    type="button"
+                    className={`status-chip ${selectedStatuses.length === 0 ? "status-chip-active" : ""}`}
+                    onClick={() => setSelectedStatuses([])}
+                  >
+                    All
+                  </button>
+                  {statusOptions.map((status) => (
+                    <button
+                      type="button"
+                      key={status}
+                      className={`status-chip ${selectedStatuses.includes(status) ? "status-chip-active" : ""}`}
+                      onClick={() => toggleStatusFilter(status)}
+                    >
+                      {statusLabels[status]}
+                    </button>
+                  ))}
+                </div>
+
+                <button className="ghost-button filter-reset" type="button" onClick={resetFilters}>
+                  Reset filters
+                </button>
+              </div>
+
+              {error ? <div className="message error-message">{error}</div> : null}
+              {success ? <div className="message success-message">{success}</div> : null}
+
+              <div className="card-grid">
+                {filteredApplications.length === 0 ? (
                   <div className="empty-state">
-                    <strong>No applications yet.</strong>
-                    <span>Add your first application from the form.</span>
+                    <strong>No applications found.</strong>
+                    <span>Try another filter or add a new application on the right.</span>
                   </div>
                 ) : (
-                  recentActivity.map((item) => (
-                    <article className="dashboard-row" key={item.id}>
-                      <div>
-                        <strong>{item.title}</strong>
-                        <p>{item.activity}</p>
-                      </div>
-                      <div className="dashboard-row-meta">
-                        <StatusBadge status={item.status} />
-                        <span>{item.date}</span>
-                      </div>
+                  filteredApplications.map((item) => (
+                    <article
+                      key={item.id}
+                      className="application-card"
+                    >
+                      <>
+                          <div className="card-top">
+                            <div>
+                              <p className="card-label">{item.company}</p>
+                              <h3>{item.position}</h3>
+                            </div>
+                            <div className="card-top-actions">
+                              <button
+                                className={`favorite-toggle ${item.favorite ? "favorite-toggle-active" : ""}`}
+                                type="button"
+                                onClick={() => toggleFavorite(item)}
+                                disabled={togglingFavoriteId === item.id}
+                                aria-label={item.favorite ? "Remove from favorites" : "Add to favorites"}
+                              >
+                                <Heart size={16} fill={item.favorite ? "currentColor" : "none"} />
+                              </button>
+                              <StatusBadge status={item.status} />
+                            </div>
+                          </div>
+
+                          <div className="card-meta">
+                            <span>
+                              <Building2 size={15} />
+                              {item.company}
+                            </span>
+                            <span>
+                              <MapPin size={15} />
+                              {item.location || "No location"}
+                            </span>
+                            <span>
+                              <Star size={15} />
+                              {item.source || "No source"}
+                            </span>
+                          </div>
+
+                          <div className="card-footer">
+                            <div className="card-date">
+                              Applied: <strong>{formatDate(item.applied_date)}</strong>
+                            </div>
+                            <span className="card-age">{getAppliedAge(item.applied_date)}</span>
+                          </div>
+
+                          {item.notes ? <p className="card-notes">{item.notes}</p> : null}
+
+                          <div className="card-actions">
+                            <button className="ghost-button" type="button" onClick={() => startEdit(item)}>
+                              <PencilLine size={16} />
+                              Edit
+                            </button>
+                            <button
+                              className="danger-button"
+                              type="button"
+                              onClick={() => openDeleteModal(item)}
+                              disabled={deletingId === item.id}
+                            >
+                              <Trash2 size={16} />
+                              {deletingId === item.id ? "Deleting" : "Delete"}
+                            </button>
+                          </div>
+                      </>
                     </article>
                   ))
                 )}
               </div>
             </section>
-
-            <StatusChart items={chartData} />
-          </div>
+            </div>
+          </>
         ) : (
           <div className={`content-grid ${activeSection === "favorites" ? "content-grid-single" : ""}`}>
             <section className="applications-panel">

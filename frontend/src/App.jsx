@@ -273,6 +273,7 @@ export default function App() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [togglingFavoriteId, setTogglingFavoriteId] = useState(null);
   const [shouldScrollToForm, setShouldScrollToForm] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   const updateCreateForm = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -518,6 +519,12 @@ export default function App() {
       : activeSection === "favorites"
         ? "Focus on the roles you marked as important."
         : "Track every company, status change, note, and favorite role from one place.";
+  const dashboardDate = new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date());
 
   const activateSection = (section) => {
     setActiveSection(section);
@@ -778,13 +785,13 @@ export default function App() {
     <div className="page-canvas">
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand">
+        <button className="brand brand-button" type="button" onClick={() => setAboutOpen(true)}>
           <div className="brand-mark">J</div>
           <div>
             <strong>JobFlow</strong>
             <span>Application Tracker</span>
           </div>
-        </div>
+        </button>
 
         <p className="sidebar-section-title">Main Menu</p>
         <nav className="sidebar-nav">
@@ -831,6 +838,9 @@ export default function App() {
             <p className="eyebrow">Your pipeline</p>
             <h1>{pageHeading}</h1>
             <p className="hero-copy">{pageCopy}</p>
+            {activeSection === "dashboard" ? (
+              <p className="hero-date">Today: {dashboardDate}</p>
+            ) : null}
           </div>
 
           <div className="hero-actions">
@@ -1127,6 +1137,36 @@ export default function App() {
               submitLabel="Save Changes"
               onCancel={cancelEdit}
             />
+          </div>
+        </div>
+      ) : null}
+
+      {aboutOpen ? (
+        <div className="modal-backdrop" role="presentation" onClick={() => setAboutOpen(false)}>
+          <div
+            className="about-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="about-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="about-modal-eyebrow">About this app</p>
+            <h2 id="about-modal-title">JobFlow Application Tracker</h2>
+            <p className="about-modal-copy">
+              This app helps you track job applications from one place. You can add,
+              edit, delete, favorite, filter, sort, and export applications while
+              following progress through statuses like saved, applied, interview,
+              offer, and rejected.
+            </p>
+            <p className="about-modal-copy">
+              Use the Dashboard for quick activity and status overview, Applications
+              for full management, and Favorites to focus on the roles that matter most.
+            </p>
+            <div className="confirm-modal-actions">
+              <button className="primary-button" type="button" onClick={() => setAboutOpen(false)}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

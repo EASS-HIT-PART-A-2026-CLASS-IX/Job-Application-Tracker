@@ -35,6 +35,20 @@
   padding: 6px 8px 18px;
 }
 
+.brand-button {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+.brand-button:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
 .brand-mark {
   width: 40px;
   height: 40px;
@@ -193,6 +207,13 @@
   max-width: 620px;
   margin-top: 6px;
   font-size: 0.95rem;
+}
+
+.hero-date {
+  margin: 10px 0 0;
+  color: #6b7280;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 .hero-actions,
@@ -798,7 +819,8 @@
 }
 
 .edit-modal,
-.confirm-modal {
+.confirm-modal,
+.about-modal {
   width: min(100%, 620px);
   border-radius: 18px;
   padding: 22px;
@@ -816,7 +838,8 @@
 }
 
 .edit-modal-eyebrow,
-.confirm-modal-eyebrow {
+.confirm-modal-eyebrow,
+.about-modal-eyebrow {
   margin: 0 0 8px;
   color: #7c3aed;
   text-transform: uppercase;
@@ -826,7 +849,8 @@
 }
 
 .edit-modal h2,
-.confirm-modal h2 {
+.confirm-modal h2,
+.about-modal h2 {
   margin: 0;
   color: #111827;
 }
@@ -839,6 +863,12 @@
   margin: 12px 0 0;
   color: #6b7280;
   line-height: 1.55;
+}
+
+.about-modal-copy {
+  margin: 14px 0 0;
+  color: #6b7280;
+  line-height: 1.6;
 }
 
 .confirm-modal-actions {

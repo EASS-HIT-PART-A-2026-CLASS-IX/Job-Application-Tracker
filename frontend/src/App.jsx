@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  Activity,
+  BadgeCheck,
   BriefcaseBusiness,
   Building2,
   Download,
+  FileText,
   Heart,
   MapPin,
   PencilLine,
@@ -37,6 +40,14 @@ const statusLabels = {
   rejected: "Rejected",
 };
 
+const statusColors = {
+  saved: "#64748b",
+  applied: "#2563eb",
+  interview: "#d97706",
+  offer: "#16a34a",
+  rejected: "#dc2626",
+};
+
 function StatusBadge({ status }) {
   return (
     <span className={`status-badge status-${status}`}>
@@ -45,9 +56,63 @@ function StatusBadge({ status }) {
   );
 }
 
+function StatusChart({ items }) {
+  const total = items.reduce((sum, item) => sum + item.value, 0);
+  let currentStop = 0;
+
+  const segments = items
+    .filter((item) => item.value > 0)
+    .map((item) => {
+      const slice = (item.value / Math.max(total, 1)) * 100;
+      const start = currentStop;
+      currentStop += slice;
+      return `${item.color} ${start}% ${currentStop}%`;
+    });
+
+  const chartBackground =
+    total === 0
+      ? "conic-gradient(#e5e7eb 0% 100%)"
+      : `conic-gradient(${segments.join(", ")})`;
+
+  return (
+    <div className="chart-panel">
+      <div className="section-head">
+        <div>
+          <h2>Application chart</h2>
+          <p>Status distribution across your pipeline</p>
+        </div>
+      </div>
+
+      <div className="chart-layout">
+        <div className="chart-ring-wrap">
+          <div className="chart-ring" style={{ background: chartBackground }}>
+            <div className="chart-ring-center">
+              <strong>{total}</strong>
+              <span>Total</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="chart-status-flow">
+          {items.map((item) => (
+            <div className="chart-flow-item" key={item.key}>
+              <span className="chart-dot" style={{ background: item.color }} />
+              <span className="chart-flow-label">{item.label}</span>
+              <span className="chart-flow-separator">:</span>
+              <strong className="chart-flow-value">
+                {total ? `${Math.round((item.value / total) * 100)}%` : "0%"}
+              </strong>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function formatDate(value) {
   if (!value) {
-    return "No date";
+    return "No applied date";
   }
 
   const date = new Date(value);
@@ -60,6 +125,31 @@ function formatDate(value) {
     month: "short",
     year: "numeric",
   });
+}
+
+function getAppliedAge(value) {
+  if (!value) {
+    return "Date not set";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Date not set";
+  }
+
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+
+  if (diffDays === 0) {
+    return "Today";
+  }
+
+  if (diffDays === 1) {
+    return "1 day ago";
+  }
+
+  return `${diffDays} days ago`;
 }
 
 function ApplicationForm({
@@ -176,9 +266,13 @@ export default function App() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedStatuses, setSelectedStatuses] = useState([]);
   const [favoriteFilter, setFavoriteFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
   const [activeSection, setActiveSection] = useState("applications");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [togglingFavoriteId, setTogglingFavoriteId] = useState(null);
+  const [shouldScrollToForm, setShouldScrollToForm] = useState(false);
 
   const updateCreateForm = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -219,12 +313,25 @@ export default function App() {
     fetchApplications();
   }, []);
 
+  useEffect(() => {
+    if (!shouldScrollToForm || activeSection !== "applications") {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      document.getElementById("application-form")?.scrollIntoView({ behavior: "smooth" });
+      setShouldScrollToForm(false);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeSection, shouldScrollToForm]);
+
   const filteredApplications = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
 
-    return applications.filter((application) => {
+    const filtered = applications.filter((application) => {
       const matchesStatus =
-        statusFilter === "all" || application.status === statusFilter;
+        selectedStatuses.length === 0 || selectedStatuses.includes(application.status);
       const matchesFavorite =
         favoriteFilter === "all" ||
         (favoriteFilter === "favorite" ? application.favorite : !application.favorite);
@@ -242,7 +349,30 @@ export default function App() {
 
       return matchesStatus && matchesFavorite && matchesSearch;
     });
-  }, [applications, favoriteFilter, searchTerm, statusFilter]);
+
+    return [...filtered].sort((left, right) => {
+      const leftDate = left.applied_date ? new Date(left.applied_date).getTime() : 0;
+      const rightDate = right.applied_date ? new Date(right.applied_date).getTime() : 0;
+
+      if (sortBy === "oldest") {
+        return leftDate - rightDate;
+      }
+
+      if (sortBy === "company_asc") {
+        return left.company.localeCompare(right.company);
+      }
+
+      if (sortBy === "company_desc") {
+        return right.company.localeCompare(left.company);
+      }
+
+      if (sortBy === "status") {
+        return left.status.localeCompare(right.status);
+      }
+
+      return rightDate - leftDate;
+    });
+  }, [applications, favoriteFilter, searchTerm, selectedStatuses, sortBy]);
 
   const summary = useMemo(
     () => ({
@@ -268,6 +398,27 @@ export default function App() {
     [applications],
   );
 
+  const recentActivity = useMemo(
+    () =>
+      recentApplications.map((item) => ({
+        id: item.id,
+        title: `${item.position} at ${item.company}`,
+        activity:
+          item.status === "offer"
+            ? "Offer in progress"
+            : item.status === "interview"
+              ? "Interview stage reached"
+              : item.status === "applied"
+                ? "Application sent"
+                : item.status === "rejected"
+                  ? "Application closed"
+                  : "Saved for later",
+        date: formatDate(item.applied_date),
+        status: item.status,
+      })),
+    [recentApplications],
+  );
+
   const favoriteSummary = useMemo(() => {
     const favorites = applications.filter((item) => item.favorite);
 
@@ -281,19 +432,78 @@ export default function App() {
     };
   }, [applications]);
 
+  const chartData = useMemo(
+    () =>
+      ["saved", "applied", "interview", "offer", "rejected"].map((status) => ({
+        key: status,
+        label: statusLabels[status],
+        value: applications.filter((item) => item.status === status).length,
+        color: statusColors[status],
+      })),
+    [applications],
+  );
+
   const statsCards =
     activeSection === "favorites"
       ? [
-          { label: "Favorites", value: favoriteSummary.total, note: "Marked as priority" },
-          { label: "Favorite active", value: favoriteSummary.active, note: "Still in progress" },
-          { label: "Favorite offers", value: favoriteSummary.offers, note: "Positive favorite outcomes" },
-          { label: "With notes", value: favoriteSummary.withNotes, note: "Favorites with saved context" },
+          {
+            label: "Favorites",
+            value: favoriteSummary.total,
+            note: "Priority applications saved in your board",
+            icon: <Heart size={15} />,
+            tone: "pink",
+          },
+          {
+            label: "Favorite Active",
+            value: favoriteSummary.active,
+            note: "Favorites still moving through the pipeline",
+            icon: <Activity size={15} />,
+            tone: "blue",
+          },
+          {
+            label: "Favorite Offers",
+            value: favoriteSummary.offers,
+            note: "Favorite roles that already reached offer stage",
+            icon: <BadgeCheck size={15} />,
+            tone: "green",
+          },
+          {
+            label: "With Notes",
+            value: favoriteSummary.withNotes,
+            note: "Favorite applications that include saved notes",
+            icon: <FileText size={15} />,
+            tone: "amber",
+          },
         ]
       : [
-          { label: "Total", value: summary.total, note: "All tracked applications" },
-          { label: "Active", value: summary.active, note: "Still in progress" },
-          { label: "Offers", value: summary.offers, note: "Positive outcomes" },
-          { label: "Favorites", value: summary.favorites, note: "Priority roles" },
+          {
+            label: "Total Applications",
+            value: summary.total,
+            note: "All tracked applications in your workspace",
+            icon: <BriefcaseBusiness size={15} />,
+            tone: "blue",
+          },
+          {
+            label: "Active Pipeline",
+            value: summary.active,
+            note: "Applications currently saved, applied, or interview",
+            icon: <Activity size={15} />,
+            tone: "violet",
+          },
+          {
+            label: "Offers",
+            value: summary.offers,
+            note: "Applications that reached a positive outcome",
+            icon: <BadgeCheck size={15} />,
+            tone: "green",
+          },
+          {
+            label: "Favorites",
+            value: summary.favorites,
+            note: "Priority roles you marked to revisit quickly",
+            icon: <Heart size={15} />,
+            tone: "pink",
+          },
         ];
 
   const pageHeading =
@@ -318,11 +528,32 @@ export default function App() {
     }
 
     setFavoriteFilter("all");
-    setStatusFilter("all");
+    setSelectedStatuses([]);
 
     if (section === "dashboard") {
       setSearchTerm("");
     }
+  };
+
+  const openAddApplicationForm = () => {
+    setActiveSection("applications");
+    setFavoriteFilter("all");
+    setShouldScrollToForm(true);
+  };
+
+  const toggleStatusFilter = (status) => {
+    setSelectedStatuses((current) =>
+      current.includes(status)
+        ? current.filter((item) => item !== status)
+        : [...current, status],
+    );
+  };
+
+  const resetFilters = () => {
+    setSearchTerm("");
+    setSelectedStatuses([]);
+    setFavoriteFilter(activeSection === "favorites" ? "favorite" : "all");
+    setSortBy("newest");
   };
 
   const exportApplicationsToCsv = () => {
@@ -458,15 +689,62 @@ export default function App() {
     }
   };
 
-  const deleteApplication = async (applicationId, company, position) => {
-    const confirmed = window.confirm(
-      `Delete ${position} at ${company}? This cannot be undone.`,
-    );
+  const toggleFavorite = async (application) => {
+    setTogglingFavoriteId(application.id);
+    setError("");
+    setSuccess("");
 
-    if (!confirmed) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/applications/${application.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          normalizePayload({
+            company: application.company,
+            position: application.position,
+            status: application.status,
+            location: application.location ?? "",
+            applied_date: application.applied_date ?? "",
+            source: application.source ?? "",
+            notes: application.notes ?? "",
+            favorite: !application.favorite,
+          }),
+        ),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        const detail = body?.detail ? JSON.stringify(body.detail) : "Failed to update favorite.";
+        throw new Error(detail);
+      }
+
+      setSuccess(application.favorite ? "Removed from favorites." : "Added to favorites.");
+      await fetchApplications();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unexpected error.");
+    } finally {
+      setTogglingFavoriteId(null);
+    }
+  };
+
+  const openDeleteModal = (application) => {
+    setDeleteTarget(application);
+  };
+
+  const closeDeleteModal = () => {
+    if (deletingId) {
       return;
     }
 
+    setDeleteTarget(null);
+  };
+
+  const deleteApplication = async () => {
+    if (!deleteTarget) {
+      return;
+    }
+
+    const applicationId = deleteTarget.id;
     setDeletingId(applicationId);
     setError("");
     setSuccess("");
@@ -487,6 +765,7 @@ export default function App() {
       }
 
       setSuccess("Application deleted.");
+      setDeleteTarget(null);
       await fetchApplications();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unexpected error.");
@@ -496,6 +775,7 @@ export default function App() {
   };
 
   return (
+    <div className="page-canvas">
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
@@ -506,6 +786,7 @@ export default function App() {
           </div>
         </div>
 
+        <p className="sidebar-section-title">Main Menu</p>
         <nav className="sidebar-nav">
           <button
             type="button"
@@ -561,21 +842,26 @@ export default function App() {
               <RefreshCw size={16} className={loading ? "spin" : ""} />
               {loading ? "Refreshing" : "Refresh"}
             </button>
-            <button
-              className="primary-button"
-              type="button"
-              onClick={() => document.getElementById("application-form")?.scrollIntoView({ behavior: "smooth" })}
-            >
-              <Plus size={16} />
-              Add Application
-            </button>
+            {activeSection !== "applications" ? (
+              <button
+                className="primary-button"
+                type="button"
+                onClick={openAddApplicationForm}
+              >
+                <Plus size={16} />
+                Add Application
+              </button>
+            ) : null}
           </div>
         </section>
 
         <section className="stats-grid">
           {statsCards.map((card) => (
-            <article className="stat-card" key={card.label}>
-              <span>{card.label}</span>
+            <article className={`stat-card stat-card-${card.tone}`} key={card.label}>
+              <div className="stat-card-head">
+                <div className="stat-card-icon">{card.icon}</div>
+                <span>{card.label}</span>
+              </div>
               <strong>{card.value}</strong>
               <p>{card.note}</p>
             </article>
@@ -584,45 +870,38 @@ export default function App() {
 
         {activeSection === "dashboard" ? (
           <div className="dashboard-grid">
-            <section className="dashboard-summary">
-              <p className="dashboard-summary-label">Summary metric</p>
-              <strong>{summary.active}</strong>
-              <h2>Active applications</h2>
-              <p>
-                Roles currently in `saved`, `applied`, or `interview` status.
-              </p>
-            </section>
-
-            <section className="applications-panel">
+            <section className="applications-panel dashboard-activity">
               <div className="section-head">
                 <div>
-                  <h2>Recent applications</h2>
-                  <p>Your latest entries</p>
+                  <h2>Recent activity</h2>
+                  <p>Latest changes in your pipeline</p>
                 </div>
               </div>
 
               <div className="dashboard-list">
-                {recentApplications.length === 0 ? (
+                {recentActivity.length === 0 ? (
                   <div className="empty-state">
                     <strong>No applications yet.</strong>
                     <span>Add your first application from the form.</span>
                   </div>
                 ) : (
-                  recentApplications.map((item) => (
+                  recentActivity.map((item) => (
                     <article className="dashboard-row" key={item.id}>
                       <div>
-                        <strong>{item.position}</strong>
-                        <p>{item.company}</p>
+                        <strong>{item.title}</strong>
+                        <p>{item.activity}</p>
                       </div>
                       <div className="dashboard-row-meta">
                         <StatusBadge status={item.status} />
-                        <span>{formatDate(item.applied_date)}</span>
+                        <span>{item.date}</span>
                       </div>
                     </article>
                   ))
                 )}
               </div>
             </section>
+
+            <StatusChart items={chartData} />
           </div>
         ) : (
           <div className={`content-grid ${activeSection === "favorites" ? "content-grid-single" : ""}`}>
@@ -647,20 +926,45 @@ export default function App() {
                 />
               </label>
 
-              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                <option value="all">All statuses</option>
-                {statusOptions.map((status) => (
-                  <option key={status} value={status}>
-                    {statusLabels[status]}
-                  </option>
-                ))}
-              </select>
-
               <select value={favoriteFilter} onChange={(event) => setFavoriteFilter(event.target.value)}>
                 <option value="all">All priorities</option>
                 <option value="favorite">Favorites</option>
                 <option value="regular">Regular</option>
               </select>
+
+              <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="company_asc">Company A-Z</option>
+                <option value="company_desc">Company Z-A</option>
+                <option value="status">Status</option>
+              </select>
+            </div>
+
+            <div className="quick-filters">
+              <div className="status-chips">
+                <button
+                  type="button"
+                  className={`status-chip ${selectedStatuses.length === 0 ? "status-chip-active" : ""}`}
+                  onClick={() => setSelectedStatuses([])}
+                >
+                  All
+                </button>
+                {statusOptions.map((status) => (
+                  <button
+                    type="button"
+                    key={status}
+                    className={`status-chip ${selectedStatuses.includes(status) ? "status-chip-active" : ""}`}
+                    onClick={() => toggleStatusFilter(status)}
+                  >
+                    {statusLabels[status]}
+                  </button>
+                ))}
+              </div>
+
+              <button className="ghost-button filter-reset" type="button" onClick={resetFilters}>
+                Reset filters
+              </button>
             </div>
 
             {error ? <div className="message error-message">{error}</div> : null}
@@ -678,36 +982,24 @@ export default function App() {
                     key={item.id}
                     className="application-card"
                   >
-                    {editingId === item.id ? (
-                      <>
-                        <div className="card-top">
-                          <div>
-                            <p className="card-label">Editing</p>
-                            <h3>{item.company}</h3>
-                          </div>
-                          <StatusBadge status={editForm.status} />
-                        </div>
-
-                        <ApplicationForm
-                          form={editForm}
-                          onChange={updateEditForm}
-                          onSubmit={(event) => {
-                            event.preventDefault();
-                            saveEdit(item.id);
-                          }}
-                          submitting={submitting}
-                          submitLabel="Save Changes"
-                          onCancel={cancelEdit}
-                        />
-                      </>
-                    ) : (
-                      <>
+                    <>
                         <div className="card-top">
                           <div>
                             <p className="card-label">{item.company}</p>
                             <h3>{item.position}</h3>
                           </div>
-                          <StatusBadge status={item.status} />
+                          <div className="card-top-actions">
+                            <button
+                              className={`favorite-toggle ${item.favorite ? "favorite-toggle-active" : ""}`}
+                              type="button"
+                              onClick={() => toggleFavorite(item)}
+                              disabled={togglingFavoriteId === item.id}
+                              aria-label={item.favorite ? "Remove from favorites" : "Add to favorites"}
+                            >
+                              <Heart size={16} fill={item.favorite ? "currentColor" : "none"} />
+                            </button>
+                            <StatusBadge status={item.status} />
+                          </div>
                         </div>
 
                         <div className="card-meta">
@@ -729,7 +1021,7 @@ export default function App() {
                           <div className="card-date">
                             Applied: <strong>{formatDate(item.applied_date)}</strong>
                           </div>
-                          {item.favorite ? <span className="favorite-pill">Favorite</span> : null}
+                          <span className="card-age">{getAppliedAge(item.applied_date)}</span>
                         </div>
 
                         {item.notes ? <p className="card-notes">{item.notes}</p> : null}
@@ -742,15 +1034,14 @@ export default function App() {
                           <button
                             className="danger-button"
                             type="button"
-                            onClick={() => deleteApplication(item.id, item.company, item.position)}
+                            onClick={() => openDeleteModal(item)}
                             disabled={deletingId === item.id}
                           >
                             <Trash2 size={16} />
                             {deletingId === item.id ? "Deleting" : "Delete"}
                           </button>
                         </div>
-                      </>
-                    )}
+                    </>
                   </article>
                 ))
               )}
@@ -778,6 +1069,68 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {deleteTarget ? (
+        <div className="modal-backdrop" role="presentation" onClick={closeDeleteModal}>
+          <div
+            className="confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <p className="confirm-modal-eyebrow">Delete application</p>
+            <h2 id="delete-modal-title">
+              Remove {deleteTarget.position} at {deleteTarget.company}?
+            </h2>
+            <p className="confirm-modal-copy">
+              This action will permanently delete the application from your tracker.
+            </p>
+            <div className="confirm-modal-actions">
+              <button className="ghost-button" type="button" onClick={closeDeleteModal} disabled={Boolean(deletingId)}>
+                Cancel
+              </button>
+              <button className="danger-button" type="button" onClick={deleteApplication} disabled={Boolean(deletingId)}>
+                <Trash2 size={16} />
+                {deletingId ? "Deleting" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {editingId !== null ? (
+        <div className="modal-backdrop" role="presentation" onClick={cancelEdit}>
+          <div
+            className="edit-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="edit-modal-head">
+              <div>
+                <p className="edit-modal-eyebrow">Edit application</p>
+                <h2 id="edit-modal-title">Update application details</h2>
+              </div>
+              <StatusBadge status={editForm.status} />
+            </div>
+
+            <ApplicationForm
+              form={editForm}
+              onChange={updateEditForm}
+              onSubmit={(event) => {
+                event.preventDefault();
+                saveEdit(editingId);
+              }}
+              submitting={submitting}
+              submitLabel="Save Changes"
+              onCancel={cancelEdit}
+            />
+          </div>
+        </div>
+      ) : null}
+    </div>
     </div>
   );
 }

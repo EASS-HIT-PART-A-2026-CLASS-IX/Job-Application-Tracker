@@ -1130,10 +1130,9 @@ export default function App() {
               <section className="applications-panel">
               <div className="section-head">
                 <div>
-                  <h2>Application board</h2>
+                  <h2>Favorite application board</h2>
                   <p>
-                    {filteredApplications.length} shown
-                    {activeSection === "favorites" ? " in favorites" : ""}
+                    {filteredApplications.length} favorite application{filteredApplications.length === 1 ? "" : "s"} shown
                   </p>
                 </div>
               </div>

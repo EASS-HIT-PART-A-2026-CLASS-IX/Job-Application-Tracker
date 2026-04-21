@@ -67,6 +67,7 @@ function StatusChart({
   const total = items.reduce((sum, item) => sum + item.value, 0);
   let currentStop = 0;
 
+  // Build the donut segments directly from the current status counts.
   const segments = items
     .filter((item) => item.value > 0)
     .map((item) => {
@@ -379,6 +380,7 @@ export default function App() {
     localStorage.setItem("jobflow-theme", theme);
   }, [theme]);
 
+  // Keep the last open section so a browser refresh returns to the same window.
   useEffect(() => {
     localStorage.setItem("jobflow-active-section", activeSection);
   }, [activeSection]);
@@ -399,6 +401,7 @@ export default function App() {
   const filteredApplications = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
 
+    // Search, filter, and sort are all derived from the same source list.
     const filtered = applications.filter((application) => {
       const matchesStatus =
         selectedStatuses.length === 0 || selectedStatuses.includes(application.status);
@@ -555,6 +558,7 @@ export default function App() {
   const monthlyApplications = useMemo(() => {
     const formatter = new Intl.DateTimeFormat("en-US", { month: "short" });
     const now = new Date();
+    // Keep the chart focused on recent activity instead of the full history.
     const months = Array.from({ length: 6 }, (_, index) => {
       const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -1082,6 +1086,7 @@ export default function App() {
           </>
         ) : activeSection === "favorites" ? (
           <>
+            {/* Favorites gets the same dashboard-style overview, but scoped to starred roles only. */}
             <div className="dashboard-grid">
               <section className="applications-panel dashboard-activity">
                 <div className="section-head">

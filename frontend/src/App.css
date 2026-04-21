@@ -9,6 +9,7 @@
   min-height: 100vh;
   width: 100%;
   display: grid;
+  /* Fixed sidebar + flexible workspace keeps the dashboard layout stable. */
   grid-template-columns: 250px 1fr;
   background: transparent;
   color: #1f2937;
@@ -179,6 +180,7 @@
 .stat-card,
 .application-card,
 .empty-state {
+  /* Shared surface styling for all main content cards. */
   background: #ffffff;
   border: 1px solid #ececf1;
   box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
@@ -392,6 +394,7 @@
 
 .dashboard-grid {
   display: grid;
+  /* Main dashboard row: activity panel on the left, chart on the right. */
   grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.9fr);
   grid-template-areas: "activity chart";
   gap: 22px;
@@ -739,6 +742,7 @@
 }
 
 .card-grid {
+  /* Limit wide layouts to five application cards per row. */
   grid-template-columns: repeat(5, minmax(0, 1fr));
   grid-auto-rows: 1fr;
 }
@@ -1096,6 +1100,7 @@
 }
 
 .page-canvas.theme-dark {
+  /* Dark theme uses a softer blue-gray palette instead of pure black. */
   background: linear-gradient(180deg, #28344a 0%, #243145 100%);
 }
 

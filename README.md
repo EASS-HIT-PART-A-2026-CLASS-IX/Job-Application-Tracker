@@ -177,6 +177,13 @@ cd frontend
 npm run test
 ```
 
+Verify the frontend production build:
+
+```bash
+cd frontend
+npm run build
+```
+
 ## Seed Script
 
 To populate the database with sample data:

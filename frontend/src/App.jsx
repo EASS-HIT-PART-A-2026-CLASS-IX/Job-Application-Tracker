@@ -11,7 +11,6 @@ import {
   Moon,
   PencilLine,
   Plus,
-  RefreshCw,
   Search,
   Star,
   SunMedium,
@@ -312,11 +311,11 @@ function ApplicationForm({
 }
 
 export default function App() {
+  // Core application state: data, UI mode, and transient feedback.
   const [applications, setApplications] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [editForm, setEditForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState("");
@@ -353,8 +352,8 @@ export default function App() {
     notes: data.notes || null,
   });
 
+  // All CRUD actions reuse this loader so every view stays consistent with the API.
   const fetchApplications = async () => {
-    setLoading(true);
     setError("");
 
     try {
@@ -367,8 +366,6 @@ export default function App() {
       setApplications(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unexpected error.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -448,6 +445,7 @@ export default function App() {
   }, [applications, favoriteFilter, searchTerm, selectedStatuses, sortBy]);
 
   const summary = useMemo(
+    // Global dashboard counters for the full application list.
     () => ({
       total: applications.length,
       active: applications.filter((item) =>
@@ -495,6 +493,7 @@ export default function App() {
   const favoriteSummary = useMemo(() => {
     const favorites = applications.filter((item) => item.favorite);
 
+    // Favorites get their own metrics so that view is scoped to starred roles only.
     return {
       total: favorites.length,
       active: favorites.filter((item) =>
@@ -681,6 +680,7 @@ export default function App() {
   const activateSection = (section) => {
     setActiveSection(section);
 
+    // Favorites keeps its own default filter, while the other views reset back to all data.
     if (section === "favorites") {
       setFavoriteFilter("favorite");
       return;
@@ -1003,10 +1003,6 @@ export default function App() {
             <button className="ghost-button" type="button" onClick={exportApplicationsToCsv}>
               <Download size={16} />
               Export CSV
-            </button>
-            <button className="ghost-button" type="button" onClick={fetchApplications} disabled={loading}>
-              <RefreshCw size={16} className={loading ? "spin" : ""} />
-              {loading ? "Refreshing" : "Refresh"}
             </button>
             {activeSection !== "applications" ? (
               <button

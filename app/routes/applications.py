@@ -15,6 +15,7 @@ router = APIRouter(prefix="/applications", tags=["Applications"])
 # Get all job applications
 @router.get("", response_model=list[JobApplicationResponse])
 def list_applications(session: Session = Depends(get_session)) -> list[JobApplication]:
+    # Read the full table directly from the current database session.
     applications = session.exec(select(JobApplication)).all()
     return applications
 
@@ -42,8 +43,11 @@ def create_application(
     data: JobApplicationCreate,
     session: Session = Depends(get_session),
 ) -> JobApplication:
+    # Convert the validated request body into a SQLModel row.
     application = JobApplication(**data.model_dump())
     session.add(application)
+
+    # Commit assigns the database identity, then refresh loads the saved row back.
     session.commit()
     session.refresh(application)
     return application
@@ -64,6 +68,7 @@ def update_application(
             detail="Application not found",
         )
 
+    # Apply every validated field from the request to the existing database row.
     update_data = data.model_dump()
     for key, value in update_data.items():
         setattr(application, key, value)
@@ -88,5 +93,6 @@ def delete_application(
             detail="Application not found",
         )
 
+    # Persist the delete immediately so follow-up reads return 404.
     session.delete(application)
     session.commit()

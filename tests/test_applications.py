@@ -10,6 +10,7 @@ test_engine = create_engine("sqlite:///test.db", echo=False)
 
 
 def override_get_session():
+    # Route all test requests to the isolated test database instead of the app DB.
     with Session(test_engine) as session:
         yield session
 
@@ -87,6 +88,7 @@ def test_update_application() -> None:
     create_response = client.post("/applications", json=create_payload)
     application_id = create_response.json()["id"]
 
+    # Update the same record to verify both field changes and persisted favorite state.
     update_payload = {
         "company": "Amazon",
         "position": "DevOps Engineer",
@@ -124,6 +126,7 @@ def test_delete_application() -> None:
     delete_response = client.delete(f"/applications/{application_id}")
     assert delete_response.status_code == 204
 
+    # A deleted record should no longer be retrievable by ID.
     get_response = client.get(f"/applications/{application_id}")
     assert get_response.status_code == 404
 

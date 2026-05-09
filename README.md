@@ -86,7 +86,6 @@ job-application-tracker/
 │   ├── db.py                    # Database configuration
 │   ├── main.py                  # FastAPI entry point
 │   ├── models.py                # SQLModel models
-│   ├── repository.py            # Earlier in-memory repository implementation
 │   ├── schemas.py               # Pydantic/response schemas
 │   └── routes/
 │       ├── __init__.py
@@ -234,7 +233,7 @@ The backend follows a simple layered structure:
 - Models layer: defines database structure with SQLModel
 - Database layer: manages persistence using SQLite
 
-The project initially started with a simpler in-memory approach and still includes `app/repository.py` from that earlier stage. The current working API routes use SQLModel sessions with SQLite for persistence, while the frontend provides the full user interface.
+The current API routes use SQLModel sessions with SQLite for persistence, while the frontend provides the full user interface.
 
 ## Notes
 

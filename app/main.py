@@ -41,5 +41,10 @@ def root() -> dict[str, str]:
     return {"message": "Job Application Tracker API is running"}
 
 
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok"}
+
+
 # Register application routes (applications endpoints)
 app.include_router(applications_router)

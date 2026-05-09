@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import create_db_and_tables
 from app.routes.applications import router as applications_router
+from app.routes.auth import router as auth_router
 
 
 # Lifespan function runs when the app starts and shuts down
@@ -48,3 +49,4 @@ def health() -> dict[str, str]:
 
 # Register application routes (applications endpoints)
 app.include_router(applications_router)
+app.include_router(auth_router)

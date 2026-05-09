@@ -92,11 +92,21 @@ job-application-tracker/
 │       └── applications.py      # Application API routes
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx              # Main React app
+│   │   ├── components/
+│   │   │   ├── ApplicationCard.jsx          # Individual application card
+│   │   │   ├── ApplicationForm.jsx          # Create/edit form
+│   │   │   ├── ApplicationsByMonthPanel.jsx # Monthly trend chart
+│   │   │   ├── FilterBar.jsx                # Search, filters, sort
+│   │   │   ├── Sidebar.jsx                  # Left navigation panel
+│   │   │   ├── StatusBadge.jsx              # Status label badge
+│   │   │   └── StatusChart.jsx              # Donut chart
+│   │   ├── App.jsx              # Main app — state, API calls, layout
 │   │   ├── App.css              # Main UI styles
-│   │   └── index.css            # Global frontend styles
+│   │   ├── constants.js         # Shared status config and API URL
+│   │   ├── index.css            # Global frontend styles
+│   │   └── utils.js             # Date formatting helpers
 │   ├── tests/
-│   │   ├── App.test.jsx         # Frontend interface workflow test
+│   │   ├── App.test.jsx         # Frontend interface workflow tests (3)
 │   │   └── setupTests.js        # Frontend test setup
 │   ├── index.html
 │   ├── package.json
@@ -173,7 +183,7 @@ Run frontend interface tests:
 
 ```bash
 cd frontend
-npm run test
+npm test -- --run
 ```
 
 Verify the frontend production build:

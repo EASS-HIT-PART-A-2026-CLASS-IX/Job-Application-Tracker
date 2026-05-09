@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App";
@@ -6,11 +6,12 @@ import App from "../src/App";
 describe("App interface workflow", () => {
   beforeEach(() => {
     window.localStorage.clear();
-    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    cleanup();
+    vi.unstubAllGlobals();
   });
 
   it("allows adding an application from the interface", async () => {
@@ -74,5 +75,53 @@ describe("App interface workflow", () => {
     expect(fetchMock.mock.calls[1][0]).toContain("/applications");
     expect(fetchMock.mock.calls[1][1]?.method).toBe("POST");
     expect(fetchMock.mock.calls[2][0]).toContain("/applications");
+  });
+
+  it("clears the form after a successful submission", async () => {
+    const createdApplication = {
+      id: 1, company: "Acme", position: "Backend Engineer",
+      status: "applied", location: "Remote", applied_date: "2026-04-14",
+      source: "LinkedIn", notes: "Portfolio sent", favorite: false,
+    };
+
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => [] })
+      .mockResolvedValueOnce({ ok: true, json: async () => createdApplication })
+      .mockResolvedValueOnce({ ok: true, json: async () => [createdApplication] }),
+    );
+
+    render(<App />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: /Applications/i }));
+    await user.type(screen.getByLabelText("Company"), "Acme");
+    await user.type(screen.getByLabelText("Position"), "Backend Engineer");
+    await user.click(screen.getByRole("button", { name: "Save Application" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Application added.")).toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText("Company").value).toBe("");
+    expect(screen.getByLabelText("Position").value).toBe("");
+  });
+
+  it("shows an error message when the API call fails", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => [] })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ detail: "Server error" }) }),
+    );
+
+    render(<App />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: /Applications/i }));
+    await user.type(screen.getByLabelText("Company"), "Acme");
+    await user.type(screen.getByLabelText("Position"), "Backend Engineer");
+    await user.click(screen.getByRole("button", { name: "Save Application" }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Server error/i)).toBeInTheDocument();
+    });
   });
 });

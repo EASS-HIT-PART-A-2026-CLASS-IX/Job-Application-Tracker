@@ -49,7 +49,13 @@ def test_create_application() -> None:
     data = response.json()
     assert data["id"] == 1
     assert data["company"] == "Google"
+    assert data["position"] == "Backend Developer"
     assert data["status"] == "applied"
+    assert data["location"] == "Tel Aviv"
+    assert data["applied_date"] == "2026-03-25"
+    assert data["source"] == "LinkedIn"
+    assert data["notes"] == "Sent CV through LinkedIn"
+    assert data["favorite"] is False
 
 
 def test_get_application_by_id() -> None:
@@ -135,6 +141,35 @@ def test_get_missing_application_returns_404() -> None:
     response = client.get("/applications/999")
     assert response.status_code == 404
     assert response.json()["detail"] == "Application not found"
+
+
+def test_update_missing_application_returns_404() -> None:
+    payload = {
+        "company": "Google",
+        "position": "Backend Developer",
+        "status": "applied",
+        "location": "Tel Aviv",
+        "applied_date": "2026-03-25",
+        "source": "LinkedIn",
+        "notes": "Sent CV",
+        "favorite": False
+    }
+
+    response = client.put("/applications/999", json=payload)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Application not found"
+
+
+def test_create_application_with_missing_required_field_returns_422() -> None:
+    payload = {
+        "position": "Backend Developer",
+        "status": "applied",
+    }
+
+    response = client.post("/applications", json=payload)
+
+    assert response.status_code == 422
 
 
 def test_create_application_with_invalid_status_returns_422() -> None:

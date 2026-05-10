@@ -18,11 +18,16 @@ import ApplicationCard from "./components/ApplicationCard";
 import ApplicationForm from "./components/ApplicationForm";
 import ApplicationsByMonthPanel from "./components/ApplicationsByMonthPanel";
 import FilterBar from "./components/FilterBar";
+import Login from "./components/Login";
+import Register from "./components/Register";
 import Sidebar from "./components/Sidebar";
 import StatusBadge from "./components/StatusBadge";
+import AiAdvisor from "./components/AiAdvisor";
 import StatusChart from "./components/StatusChart";
 
 export default function App() {
+  const [token, setToken] = useState(() => localStorage.getItem("jobflow-token"));
+  const [authPage, setAuthPage] = useState("login");
   const [applications, setApplications] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [editForm, setEditForm] = useState(initialForm);
@@ -37,7 +42,7 @@ export default function App() {
   const [sortBy, setSortBy] = useState("newest");
   const [activeSection, setActiveSection] = useState(() => {
     const saved = localStorage.getItem("jobflow-active-section");
-    return saved === "applications" || saved === "favorites" || saved === "dashboard"
+    return ["applications", "favorites", "dashboard", "ai"].includes(saved)
       ? saved
       : "dashboard";
   });
@@ -46,6 +51,26 @@ export default function App() {
   const [shouldScrollToForm, setShouldScrollToForm] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem("jobflow-theme") ?? "light");
+
+  const authFetch = (url, options = {}) => {
+    const headers = { ...options.headers };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return fetch(url, { ...options, headers });
+  };
+
+  const logout = () => {
+    localStorage.removeItem("jobflow-token");
+    setToken(null);
+    setApplications([]);
+  };
+
+  const getUsername = () => {
+    try {
+      return JSON.parse(atob(token.split(".")[1])).sub;
+    } catch {
+      return null;
+    }
+  };
 
   const updateCreateForm = (field, value) => setForm((c) => ({ ...c, [field]: value }));
   const updateEditForm = (field, value) => setEditForm((c) => ({ ...c, [field]: value }));
@@ -61,7 +86,7 @@ export default function App() {
   const fetchApplications = async () => {
     setError("");
     try {
-      const response = await fetch(`${API_BASE_URL}/applications`);
+      const response = await authFetch(`${API_BASE_URL}/applications`);
       if (!response.ok) throw new Error("Failed to load applications. Make sure the FastAPI server is running.");
       setApplications(await response.json());
     } catch (err) {
@@ -69,7 +94,7 @@ export default function App() {
     }
   };
 
-  useEffect(() => { fetchApplications(); }, []);
+  useEffect(() => { if (token) fetchApplications(); else setApplications([]); }, [token]);
   useEffect(() => { localStorage.setItem("jobflow-theme", theme); }, [theme]);
   useEffect(() => { localStorage.setItem("jobflow-active-section", activeSection); }, [activeSection]);
 
@@ -239,6 +264,7 @@ export default function App() {
   const pageHeading =
     activeSection === "dashboard" ? "Dashboard"
     : activeSection === "favorites" ? "Favorites"
+    : activeSection === "ai" ? "AI Career Advisor"
     : "Applications";
 
   const pageCopy =
@@ -246,7 +272,9 @@ export default function App() {
       ? "See your pipeline health and the latest activity at a glance."
       : activeSection === "favorites"
         ? "Focus on the roles you marked as important."
-        : "Track every company, status change, note, and favorite role from one place.";
+        : activeSection === "ai"
+          ? "Ask anything about your job search — tips, interview prep, salary advice and more."
+          : "Track every company, status change, note, and favorite role from one place.";
 
   const dashboardDate = new Intl.DateTimeFormat("en-GB", {
     weekday: "long", day: "2-digit", month: "short", year: "numeric",
@@ -267,6 +295,12 @@ export default function App() {
   };
 
   const toggleTheme = () => setTheme((c) => (c === "dark" ? "light" : "dark"));
+
+  if (!token) {
+    return authPage === "login"
+      ? <Login onLogin={setToken} onGoToRegister={() => setAuthPage("register")} />
+      : <Register onGoToLogin={() => setAuthPage("login")} />;
+  }
 
   const toggleStatusFilter = (status) => {
     setSelectedStatuses((current) =>
@@ -315,7 +349,7 @@ export default function App() {
     setError("");
     setSuccess("");
     try {
-      const response = await fetch(`${API_BASE_URL}/applications`, {
+      const response = await authFetch(`${API_BASE_URL}/applications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(normalizePayload(form)),
@@ -357,7 +391,7 @@ export default function App() {
     setError("");
     setSuccess("");
     try {
-      const response = await fetch(`${API_BASE_URL}/applications/${applicationId}`, {
+      const response = await authFetch(`${API_BASE_URL}/applications/${applicationId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(normalizePayload(editForm)),
@@ -382,7 +416,7 @@ export default function App() {
     setError("");
     setSuccess("");
     try {
-      const response = await fetch(`${API_BASE_URL}/applications/${application.id}`, {
+      const response = await authFetch(`${API_BASE_URL}/applications/${application.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(normalizePayload({
@@ -419,7 +453,7 @@ export default function App() {
     setError("");
     setSuccess("");
     try {
-      const response = await fetch(`${API_BASE_URL}/applications/${applicationId}`, { method: "DELETE" });
+      const response = await authFetch(`${API_BASE_URL}/applications/${applicationId}`, { method: "DELETE" });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body?.detail || "Failed to delete application.");
@@ -459,12 +493,20 @@ export default function App() {
           activateSection={activateSection}
           summary={summary}
           setAboutOpen={setAboutOpen}
+          username={getUsername()}
+          onLogout={logout}
         />
 
         <main className="main-panel">
           <section className="hero-panel">
             <div>
-              <p className="eyebrow">Your pipeline</p>
+              <p className="eyebrow">
+                {getUsername()
+                  ? applications.length === 0
+                    ? `👋 Welcome to JobFlow, ${getUsername()}!`
+                    : `👋 Hey ${getUsername()}, welcome back!`
+                  : "Your pipeline"}
+              </p>
               <h1>{pageHeading}</h1>
               <p className="hero-copy">{pageCopy}</p>
               {activeSection === "dashboard" ? (
@@ -613,6 +655,18 @@ export default function App() {
                 </section>
               </div>
             </>
+          ) : activeSection === "ai" ? (
+            <div className="content-grid content-grid-single">
+              <section className="applications-panel">
+                <div className="section-head">
+                  <div>
+                    <h2>AI Career Advisor</h2>
+                    <p>Ask anything about your job search</p>
+                  </div>
+                </div>
+                <AiAdvisor />
+              </section>
+            </div>
           ) : (
             <div className="content-grid">
               <section className="applications-panel">

@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app.auth import create_access_token
@@ -9,20 +8,35 @@ from app.main import app
 client = TestClient(app)
 
 
+def register(username="admin", password="secret"):
+    return client.post("/auth/register", json={"username": username, "password": password})
+
+
+def login(username="admin", password="secret"):
+    return client.post("/auth/login", data={"username": username, "password": password})
+
+
 def get_token(username="admin", password="secret") -> str:
-    response = client.post(
-        "/auth/login",
-        data={"username": username, "password": password},
-    )
-    assert response.status_code == 200
+    register(username, password)
+    response = login(username, password)
     return response.json()["access_token"]
 
 
+def test_register_creates_user():
+    response = register()
+    assert response.status_code == 201
+    assert response.json()["username"] == "admin"
+
+
+def test_register_duplicate_returns_400():
+    register()
+    response = register()
+    assert response.status_code == 400
+
+
 def test_login_returns_token():
-    response = client.post(
-        "/auth/login",
-        data={"username": "admin", "password": "secret"},
-    )
+    register()
+    response = login()
     assert response.status_code == 200
     body = response.json()
     assert "access_token" in body
@@ -30,18 +44,13 @@ def test_login_returns_token():
 
 
 def test_login_wrong_password_returns_401():
-    response = client.post(
-        "/auth/login",
-        data={"username": "admin", "password": "wrong"},
-    )
+    register()
+    response = login(password="wrong")
     assert response.status_code == 401
 
 
 def test_login_unknown_user_returns_401():
-    response = client.post(
-        "/auth/login",
-        data={"username": "nobody", "password": "secret"},
-    )
+    response = login(username="nobody")
     assert response.status_code == 401
 
 

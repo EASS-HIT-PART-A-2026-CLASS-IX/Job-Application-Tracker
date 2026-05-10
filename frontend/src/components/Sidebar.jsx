@@ -1,6 +1,6 @@
-import { BriefcaseBusiness, Building2, Heart } from "lucide-react";
+import { BriefcaseBusiness, Building2, Heart, LogOut, Sparkles } from "lucide-react";
 
-export default function Sidebar({ activeSection, activateSection, summary, setAboutOpen }) {
+export default function Sidebar({ activeSection, activateSection, summary, setAboutOpen, username, onLogout }) {
   return (
     <aside className="sidebar">
       <button className="brand brand-button" type="button" onClick={() => setAboutOpen(true)}>
@@ -39,12 +39,30 @@ export default function Sidebar({ activeSection, activateSection, summary, setAb
           <span>Favorites</span>
           <span className="nav-count">{summary.favorites}</span>
         </button>
+        <button
+          type="button"
+          className={`nav-item ${activeSection === "ai" ? "nav-item-active" : ""}`}
+          onClick={() => activateSection("ai")}
+        >
+          <Sparkles size={18} />
+          <span>AI Advisor</span>
+        </button>
       </nav>
 
       <div className="sidebar-card">
         <p>Stay organized</p>
         <strong>{summary.active} active opportunities</strong>
         <span>Saved, applied, and interview stages in one view.</span>
+      </div>
+
+      <div className="sidebar-user">
+        <div className="sidebar-user-info">
+          <div className="sidebar-avatar">{username ? username[0].toUpperCase() : "?"}</div>
+          <span className="sidebar-username">{username}</span>
+        </div>
+        <button className="sidebar-logout" type="button" onClick={onLogout} title="Sign out">
+          <LogOut size={15} />
+        </button>
       </div>
     </aside>
   );

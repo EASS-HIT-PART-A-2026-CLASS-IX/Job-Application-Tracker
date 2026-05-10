@@ -5,21 +5,20 @@ import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlmodel import Session, select
+
+from app.db import get_session
+from app.models import User
 
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-production-xx")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# bcrypt hash of the default password "secret"
-DEFAULT_PASSWORD_HASH = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
-
-USERS = {
-    os.getenv("AUTH_USERNAME", "admin"): os.getenv(
-        "AUTH_PASSWORD_HASH", DEFAULT_PASSWORD_HASH
-    )
-}
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+
+def hash_password(plain: str) -> str:
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -33,7 +32,17 @@ def create_access_token(subject: str, expires_delta: timedelta | None = None) ->
     return jwt.encode({"sub": subject, "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
+def authenticate_user(session: Session, username: str, password: str) -> User | None:
+    user = session.exec(select(User).where(User.username == username)).first()
+    if not user or not verify_password(password, user.hashed_password):
+        return None
+    return user
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    session: Session = Depends(get_session),
+) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -44,7 +53,6 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
         username: str | None = payload.get("sub")
         if username is None:
             raise credentials_exception
-        return username
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -53,3 +61,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
         )
     except jwt.InvalidTokenError:
         raise credentials_exception
+
+    user = session.exec(select(User).where(User.username == username)).first()
+    if user is None:
+        raise credentials_exception
+    return user

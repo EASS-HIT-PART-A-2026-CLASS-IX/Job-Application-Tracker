@@ -10,6 +10,8 @@ Key behaviours:
   run on the same day skips already-handled records.
 - Retries: transient API errors are retried up to MAX_RETRIES times with
   linear back-off before the error is propagated.
+- Auth: the worker logs in as a service account (WORKER_USERNAME / WORKER_PASSWORD)
+  to obtain a JWT before fetching applications.
 """
 
 import asyncio
@@ -21,6 +23,9 @@ import redis.asyncio as aioredis
 
 API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
+# Service account credentials — the seed script creates the demo user
+WORKER_USERNAME = os.getenv("WORKER_USERNAME", "demo")
+WORKER_PASSWORD = os.getenv("WORKER_PASSWORD", "demo1234")
 CONCURRENCY = 5
 STALE_DAYS = 14
 MAX_RETRIES = 3
@@ -39,11 +44,22 @@ def is_stale(app: dict) -> bool:
     return days >= STALE_DAYS
 
 
-async def fetch_applications(client: httpx.AsyncClient, api_url: str) -> list[dict]:
+async def get_token(client: httpx.AsyncClient, api_url: str) -> str:
+    """Log in as the service account and return a Bearer token."""
+    response = await client.post(
+        f"{api_url}/auth/login",
+        data={"username": WORKER_USERNAME, "password": WORKER_PASSWORD},
+    )
+    response.raise_for_status()
+    return response.json()["access_token"]
+
+
+async def fetch_applications(client: httpx.AsyncClient, api_url: str, token: str) -> list[dict]:
     """Fetch all applications from the API with retry on transient errors."""
+    headers = {"Authorization": f"Bearer {token}"}
     for attempt in range(MAX_RETRIES):
         try:
-            response = await client.get(f"{api_url}/applications")
+            response = await client.get(f"{api_url}/applications", headers=headers)
             response.raise_for_status()
             return response.json()
         except (httpx.HTTPError, httpx.TransportError):
@@ -92,7 +108,8 @@ async def run_refresh(
 
     try:
         async with httpx.AsyncClient() as client:
-            applications = await fetch_applications(client, api_url)
+            token = await get_token(client, api_url)
+            applications = await fetch_applications(client, api_url, token)
 
         tasks = [process_application(app, redis, semaphore) for app in applications]
         raw = await asyncio.gather(*tasks)

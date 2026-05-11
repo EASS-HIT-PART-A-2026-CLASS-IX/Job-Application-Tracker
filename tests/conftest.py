@@ -6,7 +6,7 @@ from sqlmodel import SQLModel, Session, create_engine
 from app.db import get_session
 from app.main import app
 
-os.environ.setdefault("OPENAI_API_KEY", "test-key")
+os.environ.setdefault("GOOGLE_API_KEY", "test-key")
 
 test_engine = create_engine("sqlite:///test.db", echo=False)
 

@@ -8,6 +8,7 @@ class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     username: str = Field(index=True, unique=True)
     hashed_password: str
+    is_admin: bool = Field(default=False)
 
 
 # Enum representing valid application statuses

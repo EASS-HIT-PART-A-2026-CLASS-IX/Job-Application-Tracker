@@ -120,12 +120,19 @@ async def test_run_refresh_returns_processed_results():
     mock_redis.exists = AsyncMock(return_value=0)
     mock_redis.aclose = AsyncMock()
 
-    mock_response = MagicMock()
-    mock_response.json.return_value = apps
-    mock_response.raise_for_status = MagicMock()
+    # Mock login response (POST /auth/login)
+    login_response = MagicMock()
+    login_response.json.return_value = {"access_token": "test-token"}
+    login_response.raise_for_status = MagicMock()
+
+    # Mock applications list response (GET /applications)
+    apps_response = MagicMock()
+    apps_response.json.return_value = apps
+    apps_response.raise_for_status = MagicMock()
 
     mock_client = AsyncMock()
-    mock_client.get = AsyncMock(return_value=mock_response)
+    mock_client.post = AsyncMock(return_value=login_response)
+    mock_client.get = AsyncMock(return_value=apps_response)
 
     with (
         patch("scripts.refresh.aioredis.from_url", return_value=mock_redis),

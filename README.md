@@ -1,272 +1,253 @@
 # Job Application Tracker
 
-A full-stack job application tracker built with FastAPI, SQLModel, SQLite, React, and Vite.
+A full-stack job application tracker with JWT authentication, per-user data isolation, an async background worker, and an AI career advisor microservice.
 
-The project lets users view existing applications, add a new application quickly, update entries, delete entries, mark favorites, export data to CSV, and view summary information in a dashboard.
+Users can register, log in, track applications through a visual pipeline, mark favorites, export to CSV, view dashboard charts, and chat with an AI career advisor powered by Google Gemini.
 
-## Requirements Coverage
+---
 
-This project satisfies the requested requirements:
+## Architecture
 
-- Users can list existing entries and add a new entry in under a minute from launch.
-- The app includes small extra features such as favorites, summary metrics, charts, and CSV export.
-- The README explains how to run the backend API and the frontend interface side-by-side on a local machine.
+```
+┌─────────────┐    ┌───────────────────┐    ┌───────────────┐
+│  React SPA  │───▶│  FastAPI Backend   │───▶│  PostgreSQL   │
+│  Vite       │    │  JWT Auth          │    │  SQLModel     │
+│  :5173      │    │  :8000             │    │  :5433        │
+└─────────────┘    └───────────────────┘    └───────────────┘
+       │                     │
+       │             ┌───────▼───────┐
+       │             │  Redis        │
+       │             │  worker TTL   │
+       │             │  :6379        │
+       │             └───────────────┘
+       ▼
+┌─────────────┐    ┌───────────────────┐
+│  AI Advisor │───▶│  ai_service        │
+│  chat UI    │    │  Pydantic AI       │
+│             │    │  Gemini            │
+└─────────────┘    │  :8001             │
+                   └───────────────────┘
+```
+
+Five Docker services in total: `db`, `redis`, `api`, `worker`, `ai_service`.
+
+---
 
 ## Features
 
-### Backend
+- **JWT authentication** — register, login, 30-minute token expiry, per-user data isolation
+- **Full CRUD** — create, read, update, delete job applications
+- **Dashboard** — summary cards, status donut chart, monthly applications bar chart
+- **Favorites** — mark roles, dedicated favorites view with separate metrics
+- **Search, filter, sort** — by status, company, keyword, applied date
+- **CSV export** — download visible applications as a spreadsheet
+- **AI Career Advisor** — chat UI backed by Google Gemini (interview tips, salary advice, cover letters)
+- **Async refresh worker** — detects stale applications with Redis idempotency (24h TTL)
+- **Role-based access** — `is_admin` flag, `GET /admin/stats` returns 403 for non-admins
+- **Dark mode** — persisted in localStorage
 
-- Create a job application
-- List all job applications
-- Get a job application by ID
-- Update a job application
-- Delete a job application
-- Seed the database with sample data
-- Test the API with pytest
+---
 
-### Frontend
+## Quick Start (Docker Compose)
 
-- Dashboard with summary cards
-- Application board with search, filters, and sorting
-- Add application form
-- Edit application in a modal window
-- Delete confirmation modal
-- Mark and unmark favorite applications
-- Favorites page with favorite-specific metrics and chart
-- Dashboard charts and recent activity
-- Export visible applications to CSV
-- Light and dark mode
-- Automated interface workflow test with Vitest and Testing Library
-
-## Tech Stack
-
-### Backend
-
-- Python 3.11+
-- FastAPI
-- Pydantic
-- SQLModel
-- SQLite
-- Uvicorn
-- pytest
-
-### Frontend
-
-- React
-- Vite
-- CSS
-- lucide-react
-- Vitest
-- Testing Library
-
-## API Endpoints
-
-### Applications
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/applications` | Get all applications |
-| GET | `/applications/{id}` | Get application by ID |
-| POST | `/applications` | Create a new application |
-| PUT | `/applications/{id}` | Update an application |
-| DELETE | `/applications/{id}` | Delete an application |
-
-### Health Check
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Check if the API is running |
-
-## Project Structure
-
-```text
-job-application-tracker/
-├── app/
-│   ├── __init__.py
-│   ├── db.py                    # Database configuration
-│   ├── main.py                  # FastAPI entry point
-│   ├── models.py                # SQLModel models
-│   ├── schemas.py               # Pydantic/response schemas
-│   └── routes/
-│       ├── __init__.py
-│       └── applications.py      # Application API routes
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── ApplicationCard.jsx          # Individual application card
-│   │   │   ├── ApplicationForm.jsx          # Create/edit form
-│   │   │   ├── ApplicationsByMonthPanel.jsx # Monthly trend chart
-│   │   │   ├── FilterBar.jsx                # Search, filters, sort
-│   │   │   ├── Sidebar.jsx                  # Left navigation panel
-│   │   │   ├── StatusBadge.jsx              # Status label badge
-│   │   │   └── StatusChart.jsx              # Donut chart
-│   │   ├── App.jsx              # Main app — state, API calls, layout
-│   │   ├── App.css              # Main UI styles
-│   │   ├── constants.js         # Shared status config and API URL
-│   │   ├── index.css            # Global frontend styles
-│   │   └── utils.js             # Date formatting helpers
-│   ├── tests/
-│   │   ├── App.test.jsx         # Frontend interface workflow tests (3)
-│   │   └── setupTests.js        # Frontend test setup
-│   ├── index.html
-│   ├── package.json
-│   └── vite.config.js
-├── scripts/
-│   └── seed.py                  # Seed sample data
-├── tests/
-│   └── test_applications.py     # Backend API tests
-├── requests.http                # Manual API request examples
-├── pyproject.toml
-├── README.md
-└── .gitignore
-```
-
-## Setup
-
-### 1. Create and activate a virtual environment
+**Requirements:** Docker, Node.js
 
 ```bash
-uv venv
-source .venv/bin/activate
+# 1. Add your Google Gemini API key (free at aistudio.google.com)
+echo "GOOGLE_API_KEY=your-key-here" > .env
+
+# 2. Start all backend services
+docker compose up --build
+
+# 3. Seed the database with demo data
+docker compose exec api python -m scripts.seed
+# → Login credentials: demo / demo1234
+
+# 4. Start the frontend (separate terminal)
+cd frontend && npm install && npm run dev
+# → http://localhost:5173
 ```
 
-### 2. Install backend dependencies
+---
+
+## Running Locally (without Docker)
 
 ```bash
+# Backend
+uv venv && source .venv/bin/activate
 uv sync --dev
-```
-
-### 3. Install frontend dependencies
-
-```bash
-cd frontend
-npm install
-cd ..
-```
-
-## Run the Project Locally
-
-Run the backend and frontend in two separate terminals.
-
-### Terminal 1: Run the API
-
-```bash
-source .venv/bin/activate
 uv run uvicorn app.main:app --reload
+# → http://localhost:8000  |  Swagger: http://localhost:8000/docs
+
+# Frontend (separate terminal)
+cd frontend && npm install && npm run dev
+# → http://localhost:5173
 ```
 
-Backend URLs:
+> Tests use SQLite automatically — no Docker required for `uv run pytest`.
 
-- API: `http://127.0.0.1:8000`
-- Swagger docs: `http://127.0.0.1:8000/docs`
+---
 
-### Terminal 2: Run the frontend
+## Demo Script
+
+Runs the full end-to-end flow: starts services, seeds data, exercises the API, runs the worker, and prints all URLs.
 
 ```bash
-cd frontend
-npm run dev
+bash scripts/demo.sh
 ```
 
-Frontend URL:
-
-- Interface: `http://127.0.0.1:5173`
+---
 
 ## Running Tests
 
-Run backend tests:
-
 ```bash
-uv run pytest
+# All backend tests (36 tests, no Docker needed)
+uv run pytest tests/ -v
+
+# Frontend tests
+cd frontend && npm test -- --run
 ```
 
-Run frontend interface tests:
+**Test coverage:**
 
-```bash
-cd frontend
-npm test -- --run
+| File | Tests | What it covers |
+|------|-------|----------------|
+| `test_applications.py` | 10 | Full CRUD, 404/422 errors, per-user isolation |
+| `test_auth.py` | 11 | Register, login, JWT expiry, invalid token, role checks |
+| `test_refresh.py` | 11 | Stale detection, Redis idempotency, async worker flow |
+| `test_ai_service.py` | 4 | Health, suggest endpoint, validation |
+
+---
+
+## API Reference
+
+### Auth
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/auth/register` | — | Create account (`{"username", "password"}`) |
+| POST | `/auth/login` | — | Get JWT token (form data) |
+| GET | `/auth/me` | Bearer | Current user info |
+
+### Applications (all require Bearer token)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/applications` | List your applications |
+| POST | `/applications` | Create application |
+| GET | `/applications/{id}` | Get by ID |
+| PUT | `/applications/{id}` | Update |
+| DELETE | `/applications/{id}` | Delete |
+
+### Admin
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/admin/stats` | Bearer + `is_admin=True` | Total users and applications |
+
+### System
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | API liveness check |
+
+### AI Service (`localhost:8001`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | AI service liveness check |
+| POST | `/chat` | Free-form career question |
+| POST | `/suggest` | Interview prep for a specific role |
+
+---
+
+## Project Structure
+
+```
+.
+├── app/
+│   ├── auth.py              # JWT creation/validation, bcrypt, require_admin
+│   ├── db.py                # SQLModel engine + session (PostgreSQL or SQLite)
+│   ├── main.py              # FastAPI app, CORS, /health, /admin/stats
+│   ├── models.py            # User (with is_admin), JobApplication, ApplicationStatus
+│   ├── schemas.py           # Pydantic request/response schemas with validation
+│   └── routes/
+│       ├── applications.py  # CRUD routes, all JWT-protected, filtered by user_id
+│       └── auth.py          # /register, /login, /me
+├── ai_service/
+│   ├── agent.py             # Pydantic AI lazy agent (Google Gemini)
+│   ├── main.py              # /chat, /suggest endpoints with CORS
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/
+│   └── src/
+│       ├── App.jsx          # Main app — auth state, routing, data fetching
+│       ├── App.css          # All UI styles (light + dark mode)
+│       ├── constants.js     # API base URLs, status config
+│       └── components/
+│           ├── Login.jsx          # Split-screen login form
+│           ├── Register.jsx       # Split-screen register form
+│           ├── Sidebar.jsx        # Navigation + user info + logout
+│           ├── AiAdvisor.jsx      # Chat UI with suggestion cards
+│           ├── ApplicationCard.jsx
+│           ├── ApplicationForm.jsx
+│           ├── FilterBar.jsx
+│           ├── StatusBadge.jsx
+│           ├── StatusChart.jsx
+│           └── ApplicationsByMonthPanel.jsx
+├── scripts/
+│   ├── demo.sh              # End-to-end walkthrough script
+│   ├── refresh.py           # Async stale-app worker (JWT auth + Redis idempotency)
+│   └── seed.py              # Creates demo user + sample applications
+├── tests/
+│   ├── conftest.py          # SQLite test DB, autouse reset fixture, dependency override
+│   ├── test_applications.py
+│   ├── test_auth.py
+│   ├── test_refresh.py      # pytest.mark.anyio async tests
+│   └── test_ai_service.py
+├── docs/
+│   ├── EX3-notes.md         # Architecture, Redis trace, JWT rotation steps
+│   └── runbooks/
+│       └── compose.md       # Docker Compose operations + CI guide
+├── compose.yaml
+├── Dockerfile
+├── pyproject.toml
+└── requests.http            # Manual API examples (IDE HTTP client)
 ```
 
-Verify the frontend production build:
+---
 
-```bash
-cd frontend
-npm run build
-```
+## Environment Variables
 
-## Seed Script
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | SQLite fallback | PostgreSQL connection string (set by Docker Compose) |
+| `SECRET_KEY` | `dev-secret-...` | JWT signing key — change before sharing |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection |
+| `GOOGLE_API_KEY` | — | Gemini API key for the AI service |
+| `LLM_MODEL` | `google-gla:gemini-2.0-flash-lite` | Pydantic AI model string |
+| `WORKER_USERNAME` | `demo` | Service account for the refresh worker |
+| `WORKER_PASSWORD` | `demo1234` | Service account password |
 
-To populate the database with sample data:
+---
 
-```bash
-uv run python scripts/seed.py
-```
+## Security Notes
 
-The seed script is useful for quickly populating the app with demo records for development and presentation.
+- Passwords hashed with bcrypt (random salt per user)
+- JWT signed HS256, expires after 30 minutes
+- All application routes filter by `current_user.id` — users cannot see each other's data
+- `SECRET_KEY` should be replaced with `python -c "import secrets; print(secrets.token_hex(32))"` before any real deployment
+- `.env` is gitignored
 
-## requests.http
-
-The `requests.http` file contains manual API request examples. It can be used from IDE HTTP clients to test the backend endpoints without using the frontend.
-
-## Interface Testing
-
-The frontend includes one automated interface workflow test in `frontend/tests/App.test.jsx`.
-
-That test verifies a basic user flow:
-
-- open the app
-- go to the Applications page
-- fill in the add form
-- submit a new application
-- verify the new application appears in the UI
-
-## Example Request Body
-
-```json
-{
-  "company": "Example Company",
-  "position": "Backend Developer",
-  "status": "applied",
-  "location": "Tel Aviv",
-  "applied_date": "2026-03-25",
-  "source": "LinkedIn",
-  "notes": "Sent CV",
-  "favorite": false
-}
-```
-
-## Design
-
-The backend follows a simple layered structure:
-
-- Routes layer: handles HTTP requests
-- Schemas layer: validates request and response data
-- Models layer: defines database structure with SQLModel
-- Database layer: manages persistence using SQLite
-
-The current API routes use SQLModel sessions with SQLite for persistence, while the frontend provides the full user interface.
-
-## Notes
-
-- The backend uses SQLite through SQLModel for persistence.
-- The frontend is designed for quick application tracking and management.
-- The current implementation uses a real database and a seed script, but migrations are not yet included.
+---
 
 ## AI Assistance
 
-This project was developed with support from AI tools during implementation and debugging.
+This project was developed with support from Claude Code.
 
-### How AI was used
-
-- Exploring project structure ideas
-- Understanding FastAPI and SQLModel integration
-- Debugging frontend and backend issues
-- Improving UI layout and feature behavior
-- Refining README and project documentation
-
-### How outputs were verified
-
-- Code was reviewed manually before use
-- Backend behavior was tested locally
-- Endpoints were checked through Swagger and manual requests
-- Frontend behavior was checked locally in the browser
-- Seed behavior and UI flows were tested during development
+- Architecture design and service integration
+- FastAPI, SQLModel, JWT, and bcrypt implementation
+- React frontend components and styling
+- Async worker, Redis idempotency pattern
+- Test suite and documentation
+- Code was reviewed and tested at each step

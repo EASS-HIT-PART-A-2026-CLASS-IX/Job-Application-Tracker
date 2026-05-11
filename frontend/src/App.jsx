@@ -500,13 +500,18 @@ export default function App() {
         <main className="main-panel">
           <section className="hero-panel">
             <div>
-              <p className="eyebrow">
-                {getUsername()
-                  ? applications.length === 0
-                    ? `👋 Welcome to JobFlow, ${getUsername()}!`
-                    : `👋 Hey ${getUsername()}, welcome back!`
-                  : "Your pipeline"}
-              </p>
+              {getUsername() ? (
+                <div className="welcome-badge">
+                  <span className="welcome-avatar">{getUsername()[0].toUpperCase()}</span>
+                  <span>
+                    {applications.length === 0
+                      ? `Welcome to JobFlow, ${getUsername()} — let's get started!`
+                      : `Good to see you, ${getUsername()} 👋`}
+                  </span>
+                </div>
+              ) : (
+                <p className="eyebrow">Your pipeline</p>
+              )}
               <h1>{pageHeading}</h1>
               <p className="hero-copy">{pageCopy}</p>
               {activeSection === "dashboard" ? (
@@ -537,18 +542,20 @@ export default function App() {
             </div>
           </section>
 
-          <section className="stats-grid">
-            {statsCards.map((card) => (
-              <article className={`stat-card stat-card-${card.tone}`} key={card.label}>
-                <div className="stat-card-head">
-                  <div className="stat-card-icon">{card.icon}</div>
-                  <span>{card.label}</span>
-                </div>
-                <strong>{card.value}</strong>
-                <p>{card.note}</p>
-              </article>
-            ))}
-          </section>
+          {activeSection !== "ai" && (
+            <section className="stats-grid">
+              {statsCards.map((card) => (
+                <article className={`stat-card stat-card-${card.tone}`} key={card.label}>
+                  <div className="stat-card-head">
+                    <div className="stat-card-icon">{card.icon}</div>
+                    <span>{card.label}</span>
+                  </div>
+                  <strong>{card.value}</strong>
+                  <p>{card.note}</p>
+                </article>
+              ))}
+            </section>
+          )}
 
           {activeSection === "dashboard" ? (
             <>
@@ -658,12 +665,6 @@ export default function App() {
           ) : activeSection === "ai" ? (
             <div className="content-grid content-grid-single">
               <section className="applications-panel">
-                <div className="section-head">
-                  <div>
-                    <h2>AI Career Advisor</h2>
-                    <p>Ask anything about your job search</p>
-                  </div>
-                </div>
                 <AiAdvisor />
               </section>
             </div>

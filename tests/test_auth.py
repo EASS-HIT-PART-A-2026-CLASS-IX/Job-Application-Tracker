@@ -76,3 +76,15 @@ def test_me_with_expired_token_returns_401():
 def test_me_with_invalid_token_returns_401():
     response = client.get("/auth/me", headers={"Authorization": "Bearer not.a.valid.token"})
     assert response.status_code == 401
+
+
+def test_admin_endpoint_forbidden_for_regular_user():
+    token = get_token(username="regular", password="pass1234")
+    response = client.get("/admin/stats", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Admin access required"
+
+
+def test_admin_endpoint_requires_token():
+    response = client.get("/admin/stats")
+    assert response.status_code == 401

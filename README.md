@@ -46,6 +46,24 @@ Five Docker services in total: `db`, `redis`, `api`, `worker`, `ai_service`.
 
 ---
 
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Language | Python 3.11 |
+| Backend framework | FastAPI |
+| ORM | SQLModel |
+| Database | PostgreSQL 16 (Docker) / SQLite (tests) |
+| Auth | JWT (PyJWT) + bcrypt |
+| Async worker | asyncio + Redis |
+| Package manager | uv |
+| Frontend | React 18 + Vite |
+| AI | Google Gemini via google-genai SDK |
+| Containerisation | Docker + Docker Compose |
+| Tests | pytest + httpx |
+
+---
+
 ## Features
 
 - **JWT authentication** — register, login, 30-minute token expiry, per-user data isolation
@@ -61,13 +79,23 @@ Five Docker services in total: `db`, `redis`, `api`, `worker`, `ai_service`.
 
 ---
 
+## Requirements
+
+| Tool | Purpose |
+|------|---------|
+| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | Runs all backend services (PostgreSQL, Redis, API, Worker, AI) |
+| [Node.js 18+](https://nodejs.org/) | Runs the React frontend dev server |
+| [Google API Key](https://aistudio.google.com/app/apikey) | Powers the AI Career Advisor (free tier available) |
+| [uv](https://github.com/astral-sh/uv) | Python package manager — only needed for local dev / running tests |
+
+---
+
 ## Quick Start (Docker Compose)
 
-**Requirements:** Docker, Node.js
-
 ```bash
-# 1. Add your Google Gemini API key (free at aistudio.google.com)
-echo "GOOGLE_API_KEY=your-key-here" > .env
+# 1. Set up your environment file
+cp .env.example .env
+# Edit .env and add your Google Gemini API key (free at https://aistudio.google.com/app/apikey)
 
 # 2. Start all backend services
 docker compose up --build
@@ -220,21 +248,25 @@ cd frontend && npm test -- --run
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── frontend/
-│   └── src/
-│       ├── App.jsx          # Main app — auth state, routing, data fetching
-│       ├── App.css          # All UI styles (light + dark mode)
-│       ├── constants.js     # API base URLs, status config
-│       └── components/
-│           ├── Login.jsx          # Split-screen login form
-│           ├── Register.jsx       # Split-screen register form
-│           ├── Sidebar.jsx        # Navigation + user info + logout
-│           ├── AiAdvisor.jsx      # Chat UI with suggestion cards
-│           ├── ApplicationCard.jsx
-│           ├── ApplicationForm.jsx
-│           ├── FilterBar.jsx
-│           ├── StatusBadge.jsx
-│           ├── StatusChart.jsx
-│           └── ApplicationsByMonthPanel.jsx
+│   ├── src/
+│   │   ├── main.jsx         # React entry point
+│   │   ├── App.jsx          # Main app — auth state, routing, data fetching
+│   │   ├── App.css          # All UI styles (light + dark mode)
+│   │   ├── constants.js     # API base URLs, status config
+│   │   ├── utils.js         # Shared helper functions
+│   │   └── components/
+│   │       ├── Login.jsx          # Split-screen login form
+│   │       ├── Register.jsx       # Split-screen register form (auto-redirects to login)
+│   │       ├── Sidebar.jsx        # Navigation + user info + logout
+│   │       ├── AiAdvisor.jsx      # Chat UI with suggestion cards
+│   │       ├── ApplicationCard.jsx
+│   │       ├── ApplicationForm.jsx
+│   │       ├── FilterBar.jsx
+│   │       ├── StatusBadge.jsx
+│   │       ├── StatusChart.jsx
+│   │       └── ApplicationsByMonthPanel.jsx
+│   └── tests/
+│       └── App.test.jsx     # Frontend integration test (add application flow)
 ├── scripts/
 │   ├── demo.sh              # End-to-end walkthrough script
 │   ├── refresh.py           # Async stale-app worker (JWT auth + Redis idempotency)
@@ -252,6 +284,7 @@ cd frontend && npm test -- --run
 ├── compose.yaml
 ├── Dockerfile
 ├── pyproject.toml
+├── .env.example             # Environment variable template
 └── requests.http            # Manual API examples (IDE HTTP client)
 ```
 

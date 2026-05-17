@@ -23,13 +23,24 @@ Users can register, log in, track applications through a visual pipeline, mark f
        ▼
 ┌─────────────┐    ┌───────────────────┐
 │  AI Advisor │───▶│  ai_service        │
-│  chat UI    │    │  Pydantic AI       │
+│  chat UI    │    │  google-genai SDK  │
 │             │    │  Gemini            │
 └─────────────┘    │  :8001             │
                    └───────────────────┘
 ```
 
 Five Docker services in total: `db`, `redis`, `api`, `worker`, `ai_service`.
+
+## Services
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| Frontend | http://localhost:5173 | React SPA (run separately with `npm run dev`) |
+| API | http://localhost:8000 | FastAPI backend |
+| API Docs | http://localhost:8000/docs | Swagger UI |
+| AI Service | http://localhost:8001 | Google Gemini career advisor |
+| PostgreSQL | localhost:5433 | Database (Docker only) |
+| Redis | localhost:6379 | Worker idempotency cache |
 
 ---
 
@@ -59,13 +70,20 @@ echo "GOOGLE_API_KEY=your-key-here" > .env
 # 2. Start all backend services
 docker compose up --build
 
+# Run in the background (optional)
+docker compose up --build -d
+
 # 3. Seed the database with demo data
 docker compose exec api python -m scripts.seed
-# → Login credentials: demo / demo1234
+# → Creates demo user — Login credentials: demo / demo1234
+# → Seeds 6 sample job applications
 
 # 4. Start the frontend (separate terminal)
 cd frontend && npm install && npm run dev
 # → http://localhost:5173
+
+# To stop all services
+docker compose down
 ```
 
 ---
@@ -175,7 +193,7 @@ cd frontend && npm test -- --run
 │       ├── applications.py  # CRUD routes, all JWT-protected, filtered by user_id
 │       └── auth.py          # /register, /login, /me
 ├── ai_service/
-│   ├── agent.py             # Pydantic AI lazy agent (Google Gemini)
+│   ├── agent.py             # google-genai wrapper (generate_text function)
 │   ├── main.py              # /chat, /suggest endpoints with CORS
 │   ├── requirements.txt
 │   └── Dockerfile
@@ -225,7 +243,7 @@ cd frontend && npm test -- --run
 | `SECRET_KEY` | `dev-secret-...` | JWT signing key — change before sharing |
 | `REDIS_URL` | `redis://localhost:6379` | Redis connection |
 | `GOOGLE_API_KEY` | — | Gemini API key for the AI service |
-| `LLM_MODEL` | `google-gla:gemini-2.0-flash-lite` | Pydantic AI model string |
+| `LLM_MODEL` | `gemini-2.0-flash-lite` | Gemini model name |
 | `WORKER_USERNAME` | `demo` | Service account for the refresh worker |
 | `WORKER_PASSWORD` | `demo1234` | Service account password |
 

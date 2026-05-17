@@ -1,6 +1,4 @@
-import pytest
 from fastapi.testclient import TestClient
-from pydantic_ai.models.test import TestModel
 
 import ai_service.agent as agent_module
 from ai_service.main import app
@@ -15,10 +13,7 @@ def test_health():
 
 
 def test_suggest_returns_advice(monkeypatch):
-    from pydantic_ai import Agent
-
-    test_agent = Agent(TestModel(), system_prompt="advisor")
-    monkeypatch.setattr(agent_module, "_agent", test_agent)
+    monkeypatch.setattr(agent_module, "generate_text", lambda prompt: "Mock interview advice")
 
     response = client.post(
         "/suggest",
@@ -38,10 +33,7 @@ def test_suggest_missing_field_returns_422():
 
 
 def test_suggest_different_roles(monkeypatch):
-    from pydantic_ai import Agent
-
-    test_agent = Agent(TestModel(), system_prompt="advisor")
-    monkeypatch.setattr(agent_module, "_agent", test_agent)
+    monkeypatch.setattr(agent_module, "generate_text", lambda prompt: "Mock career advice")
 
     for company, position in [
         ("Amazon", "Data Scientist"),

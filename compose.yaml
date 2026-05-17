@@ -63,8 +63,8 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - LLM_MODEL=${LLM_MODEL:-google-gla:gemini-2.0-flash-lite}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-gemini-2.0-flash-lite}
 
 volumes:
   pg_data:

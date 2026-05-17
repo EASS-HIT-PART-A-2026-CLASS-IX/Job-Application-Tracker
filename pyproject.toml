@@ -14,7 +14,7 @@ dependencies = [
     "PyJWT>=2.8.0",
     "bcrypt>=4.0.0",
     "python-multipart>=0.0.9",
-    "pydantic-ai>=0.0.14",
+    "google-genai>=1.0.0",
     "psycopg2-binary>=2.9.0",
 ]
 

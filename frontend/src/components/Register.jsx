@@ -23,9 +23,10 @@ export default function Register({ onGoToLogin }) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.detail || "Registration failed.");
       }
-      setSuccess("Account created! You can now sign in.");
+      setSuccess("Account created! Redirecting to sign in…");
       setUsername("");
       setPassword("");
+      setTimeout(() => onGoToLogin(), 1500);
     } catch (err) {
       setError(err.message);
     } finally {

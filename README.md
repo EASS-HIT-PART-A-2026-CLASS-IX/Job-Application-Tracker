@@ -31,6 +31,8 @@ Users can register, log in, track applications through a visual pipeline, mark f
 
 Five Docker services in total: `db`, `redis`, `api`, `worker`, `ai_service`.
 
+---
+
 ## Services
 
 | Service | URL | Description |
@@ -73,10 +75,9 @@ docker compose up --build
 # Run in the background (optional)
 docker compose up --build -d
 
-# 3. Seed the database with demo data
+# 3. Seed the database with demo data (see "Seed Script" section below)
 docker compose exec api python -m scripts.seed
-# → Creates demo user — Login credentials: demo / demo1234
-# → Seeds 6 sample job applications
+# → Login credentials: demo / demo1234
 
 # 4. Start the frontend (separate terminal)
 cd frontend && npm install && npm run dev
@@ -103,6 +104,27 @@ cd frontend && npm install && npm run dev
 ```
 
 > Tests use SQLite automatically — no Docker required for `uv run pytest`.
+
+---
+
+## Seed Script
+
+Populates the database with a demo user and sample job applications.
+
+```bash
+docker compose exec api python -m scripts.seed
+```
+
+**What it creates:**
+
+| Field | Value |
+|-------|-------|
+| Username | `demo` |
+| Password | `demo1234` |
+| Applications | 3 sample jobs (Google, Microsoft, Amazon) |
+| Statuses | `applied`, `interview`, `saved` |
+
+The script is **idempotent** — running it twice will not duplicate data.
 
 ---
 
@@ -243,7 +265,7 @@ cd frontend && npm test -- --run
 | `SECRET_KEY` | `dev-secret-...` | JWT signing key — change before sharing |
 | `REDIS_URL` | `redis://localhost:6379` | Redis connection |
 | `GOOGLE_API_KEY` | — | Gemini API key for the AI service |
-| `LLM_MODEL` | `gemini-2.0-flash-lite` | Gemini model name |
+| `LLM_MODEL` | `gemini-2.5-flash` | Gemini model name |
 | `WORKER_USERNAME` | `demo` | Service account for the refresh worker |
 | `WORKER_PASSWORD` | `demo1234` | Service account password |
 

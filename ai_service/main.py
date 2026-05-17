@@ -1,8 +1,13 @@
+import logging
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import ai_service.agent as agent_module
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [ai_service] %(message)s")
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Job Application AI Advisor")
 
@@ -52,6 +57,7 @@ def suggest(req: SuggestRequest):
     try:
         advice = agent_module.generate_text(prompt)
     except Exception as exc:
+        logger.error("suggest failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=502, detail=str(exc))
     return SuggestResponse(company=req.company, position=req.position, advice=advice)
 
@@ -61,5 +67,6 @@ def chat(req: ChatRequest):
     try:
         answer = agent_module.generate_text(req.question)
     except Exception as exc:
+        logger.error("chat failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=502, detail=str(exc))
     return ChatResponse(answer=answer)

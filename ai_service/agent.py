@@ -11,7 +11,7 @@ from google import genai
 from google.genai import types
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
-LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.0-flash-lite")
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.5-flash")
 
 SYSTEM_PROMPT = (
     "You are a career advisor specializing in job applications and career development. "
